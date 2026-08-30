@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { BrowserRouter, NavLink, Navigate, Route, Routes } from 'react-router-dom'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { BrowserRouter, Link, NavLink, Navigate, Route, Routes } from 'react-router-dom'
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
 import type { Session } from '@supabase/supabase-js'
-import { supabase } from './lib/api'
+import { api, supabase } from './lib/api'
 import { SignIn } from './screens/SignIn'
 import { Today } from './screens/Today'
 import { Challenges } from './screens/Challenges'
@@ -50,6 +50,40 @@ export function App() {
   )
 }
 
+/**
+ * The active challenge, named in the header so it is always visible that everything on
+ * screen belongs to it. Tapping it goes to the manage-and-switch screen.
+ */
+function ChallengeMenu() {
+  const { data } = useQuery({ queryKey: ['today'], queryFn: api.today })
+  const challenge = data?.challenge
+
+  return (
+    <Link
+      to="/challenges"
+      className="press ml-auto flex min-h-11 items-center gap-1.5 rounded-lg px-2.5 text-[13px] text-ink-muted hover:bg-cream-dark hover:text-ink sm:min-h-0 sm:py-1.5"
+      title="Switch or manage challenges"
+    >
+      <span
+        className="max-w-[9rem] truncate sm:max-w-[16rem]"
+        style={{ unicodeBidi: 'plaintext' }}
+      >
+        {challenge ? challenge.name : 'No challenge'}
+      </span>
+      <svg viewBox="0 0 20 20" className="h-3.5 w-3.5 shrink-0" aria-hidden="true">
+        <path
+          d="M6 8l4 4 4-4"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </Link>
+  )
+}
+
 /** `undefined` while the stored session is being restored, `null` when signed out. */
 function useSession(): Session | null | undefined {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
@@ -63,10 +97,15 @@ function useSession(): Session | null | undefined {
   return session
 }
 
+/*
+  Only two peers here. "Challenges" used to sit alongside Today and Stats, which made
+  three equal-looking tabs and read as if a challenge were a single item in a list, or
+  worse, as if each rule were its own challenge. Switching challenges is a rare,
+  settings-shaped action, so it hangs off the challenge name instead.
+*/
 const NAV = [
   { to: '/', label: 'Today' },
   { to: '/stats', label: 'Stats' },
-  { to: '/challenges', label: 'Challenges' },
 ]
 
 function Shell({ children }: { children: React.ReactNode }) {
@@ -91,10 +130,12 @@ function Shell({ children }: { children: React.ReactNode }) {
             ))}
           </nav>
 
+          <ChallengeMenu />
+
           <button
             type="button"
             onClick={() => void supabase.auth.signOut()}
-            className="press ml-auto flex min-h-11 items-center rounded-lg px-3 text-[14px] text-ink-muted hover:text-ink sm:min-h-0 sm:py-1.5 sm:text-[13px]"
+            className="press flex min-h-11 items-center rounded-lg px-3 text-[14px] text-ink-muted hover:text-ink sm:min-h-0 sm:py-1.5 sm:text-[13px]"
           >
             Sign out
           </button>

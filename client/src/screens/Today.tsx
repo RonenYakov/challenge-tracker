@@ -156,7 +156,24 @@ export function Today() {
           </Ring>
         </div>
 
-        <ul className="mt-5 grid gap-2">
+        {/*
+          An explicit heading over the list. Without it the tasks read as free-floating
+          items that happen to share a screen, which is what made a rule look like a
+          challenge of its own.
+        */}
+        <div className="mt-6 mb-2 flex items-baseline justify-between border-t border-mist/60 pt-4">
+          <p className="eyebrow">Today&rsquo;s rules</p>
+          <p className="tnum font-mono text-[12px] text-ink-muted">
+            {tasks.filter((t) => {
+              const goal = t.kind === 'check' ? 1 : (t.targetValue ?? 1)
+              return (entries.find((e) => e.taskId === t.id)?.value ?? 0) >= goal
+            }).length}
+            {' / '}
+            {tasks.length} done
+          </p>
+        </div>
+
+        <ul className="grid gap-2">
           {tasks.map((task, index) => (
             <TaskRow
               key={task.id}

@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/components/heatmap.tsx","./src/components/reckoning.tsx","./src/components/ring.tsx","./src/components/taskrow.tsx","./src/components/ui.tsx","./src/lib/api.ts","./src/screens/challengeeditor.tsx","./src/screens/challenges.tsx","./src/screens/signin.tsx","./src/screens/stats.tsx","./src/screens/today.tsx"],"version":"5.9.3"}
