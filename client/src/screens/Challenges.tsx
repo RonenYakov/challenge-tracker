@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Challenge } from '@ct/shared'
 import { api } from '../lib/api'
-import { Button, Card, Field, Input, Skeleton } from '../components/ui'
+import { Button, Card, ErrorCard, Field, Input, Skeleton } from '../components/ui'
 
 const STATUS_LABEL: Record<Challenge['status'], string> = {
   active: 'Running',
@@ -16,7 +16,10 @@ export function Challenges() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [creating, setCreating] = useState(false)
-  const { data, isPending } = useQuery({ queryKey: ['challenges'], queryFn: api.challenges })
+  const { data, isPending, isError, error, refetch } = useQuery({
+    queryKey: ['challenges'],
+    queryFn: api.challenges,
+  })
 
   const create = useMutation({
     mutationFn: api.createChallenge,
@@ -49,7 +52,9 @@ export function Challenges() {
         />
       )}
 
-      {isPending ? (
+      {isError ? (
+        <ErrorCard message={(error as Error).message} onRetry={() => void refetch()} />
+      ) : isPending ? (
         <div className="grid gap-3">
           {[0, 1].map((i) => (
             <Skeleton key={i} className="h-[86px] w-full rounded-2xl" />

@@ -1,0 +1,10 @@
+# Local environment files must never travel with a deploy. Vite inlines VITE_* values
+# at build time, so an uploaded client/.env bakes localhost into the production bundle.
+.env
+.env.*
+**/.env
+**/.env.*
+!**/.env.example
+
+node_modules
+.git

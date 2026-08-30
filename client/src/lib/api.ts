@@ -12,9 +12,16 @@ import type {
 const url = import.meta.env.VITE_SUPABASE_URL
 const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
 
-// In production the API is served from this same deployment under /api, so an empty
-// base means same-origin. Locally the API runs on its own port and VITE_API_URL is set.
-const apiUrl = import.meta.env.VITE_API_URL ?? ''
+/*
+  A production build ALWAYS talks to its own origin, where the API is served at /api.
+  Only development points somewhere else.
+
+  This is deliberately not configurable in production. A local .env once travelled with
+  a deploy and baked http://localhost:8787 into the live bundle, so the deployed site
+  asked the developer's laptop for data and failed for everyone else. Hard-coding
+  same-origin here makes that class of mistake impossible, whatever env files exist.
+*/
+const apiUrl = import.meta.env.DEV ? (import.meta.env.VITE_API_URL ?? '') : ''
 
 if (!url || !key) {
   throw new Error(
@@ -39,21 +46,44 @@ export class ApiError extends Error {
  * Every call carries the current Supabase access token. `getSession` refreshes it when
  * it is close to expiring, so a tab left open overnight does not start 401-ing.
  */
+/** Rejects rather than hanging forever, so a stall surfaces as an error the UI can show. */
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new ApiError(0, `${label} timed out. Check your connection.`)), ms),
+    ),
+  ])
+}
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const { data } = await supabase.auth.getSession()
+  // getSession refreshes an expiring token over the network, and that call can stall.
+  // Unbounded, it means the request is never even sent and the screen spins forever.
+  const { data } = await withTimeout(supabase.auth.getSession(), 10_000, 'Sign-in check')
   const token = data.session?.access_token
   if (!token) throw new ApiError(401, 'Not signed in')
 
-  const response = await fetch(`${apiUrl}${path}`, {
-    ...init,
-    headers: {
-      // Only declare a JSON body when there is one. Sending the header on a bodyless
-      // POST or DELETE makes strict servers reject the request as malformed.
-      ...(init.body ? { 'Content-Type': 'application/json' } : {}),
-      Authorization: `Bearer ${token}`,
-      ...init.headers,
-    },
-  })
+  let response: Response
+  try {
+    response = await fetch(`${apiUrl}${path}`, {
+      ...init,
+      signal: AbortSignal.timeout(20_000),
+      headers: {
+        // Only declare a JSON body when there is one. Sending the header on a bodyless
+        // POST or DELETE makes strict servers reject the request as malformed.
+        ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+        Authorization: `Bearer ${token}`,
+        ...init.headers,
+      },
+    })
+  } catch (error) {
+    // A network failure or abort is not an HTTP status, so give it a readable message
+    // rather than letting a raw "Failed to fetch" reach the screen.
+    const reason = error instanceof DOMException && error.name === 'TimeoutError'
+      ? 'The server took too long to respond.'
+      : 'Could not reach the server. Check your connection.'
+    throw new ApiError(0, reason)
+  }
 
   if (response.status === 204) return undefined as T
   const body = await response.json().catch(() => ({}))

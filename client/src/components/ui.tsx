@@ -123,3 +123,29 @@ export function EmptyState({
     </div>
   )
 }
+
+/**
+ * Shown when a request fails. A screen that keeps showing skeletons after a failure
+ * tells the user nothing and looks like the app is simply broken.
+ */
+export function ErrorCard({
+  message,
+  onRetry,
+}: {
+  message: string
+  onRetry?: () => void
+}) {
+  return (
+    <section className="rounded-2xl border p-5" style={{ borderColor: 'hsl(8 52% 52% / 0.35)' }}>
+      <p className="eyebrow" style={{ color: 'var(--color-clay)' }}>
+        Could not load
+      </p>
+      <p className="mt-2 text-[15px] text-ink">{message}</p>
+      {onRetry && (
+        <Button variant="secondary" className="mt-4" onClick={onRetry}>
+          Try again
+        </Button>
+      )}
+    </section>
+  )
+}
