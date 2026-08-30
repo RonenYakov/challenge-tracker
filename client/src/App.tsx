@@ -73,14 +73,14 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="grain min-h-dvh">
       <header className="sticky top-0 z-50 border-b border-mist/60 bg-cream/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-5xl items-center gap-1 px-4 py-2.5">
+        <div className="mx-auto flex max-w-5xl items-center gap-1 px-4 py-1.5 sm:py-2.5" style={{ paddingLeft: 'max(1rem, env(safe-area-inset-left))', paddingRight: 'max(1rem, env(safe-area-inset-right))' }}>
           <nav className="flex items-center gap-1">
             {NAV.map((item) => (
               <NavLink
                 key={item.to}
                 to={item.to}
                 end={item.to === '/'}
-                className="press rounded-lg px-3 py-1.5 text-[13px] transition-colors duration-150"
+                className="press flex min-h-11 items-center rounded-lg px-3 text-[14px] transition-colors duration-150 sm:min-h-0 sm:py-1.5 sm:text-[13px]"
                 style={({ isActive }) => ({
                   color: isActive ? 'var(--color-ink)' : 'var(--color-ink-muted)',
                   backgroundColor: isActive ? 'var(--color-cream-dark)' : 'transparent',
@@ -94,14 +94,23 @@ function Shell({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             onClick={() => void supabase.auth.signOut()}
-            className="press ml-auto rounded-lg px-3 py-1.5 text-[13px] text-ink-muted hover:text-ink"
+            className="press ml-auto flex min-h-11 items-center rounded-lg px-3 text-[14px] text-ink-muted hover:text-ink sm:min-h-0 sm:py-1.5 sm:text-[13px]"
           >
             Sign out
           </button>
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-4 pb-24 pt-5">{children}</main>
+      <main
+        className="mx-auto max-w-5xl px-4 pt-4 sm:pt-5"
+        style={{
+          paddingLeft: 'max(1rem, env(safe-area-inset-left))',
+          paddingRight: 'max(1rem, env(safe-area-inset-right))',
+          paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))',
+        }}
+      >
+        {children}
+      </main>
     </div>
   )
 }

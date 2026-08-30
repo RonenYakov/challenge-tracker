@@ -54,8 +54,8 @@ export function Heatmap({ challenge, days, today, onSelect }: HeatmapProps) {
 
   return (
     <div
-      className="grid gap-[5px]"
-      style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(14px, 1fr))' }}
+      className="grid gap-[5px] [--cell:16px] sm:[--cell:14px]"
+      style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(var(--cell, 14px), 1fr))' }}
     >
       {cells.map((cell) => (
         <button

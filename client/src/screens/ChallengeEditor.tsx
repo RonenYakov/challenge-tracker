@@ -141,7 +141,7 @@ function TaskLine({
   return (
     <li className="flex items-center gap-3 rounded-xl border border-mist/60 bg-cream px-3 py-2.5">
       <div className="min-w-0 flex-1">
-        <p dir="auto" className="truncate text-[15px]">
+        <p className="truncate text-[15px]" style={{ unicodeBidi: 'plaintext', textAlign: 'left' }}>
           {task.label}
         </p>
         <p className="tnum mt-0.5 font-mono text-[11px] text-ink-muted">
@@ -213,7 +213,7 @@ function AddTaskForm({
             key={option}
             type="button"
             onClick={() => setKind(option)}
-            className="press rounded-full border px-3 py-1 text-[12px]"
+            className="press touch rounded-full border px-3 py-2 text-[13px] sm:py-1 sm:text-[12px]"
             style={{
               borderColor: kind === option ? 'var(--color-orange)' : 'var(--color-mist)',
               color: kind === option ? 'var(--color-orange)' : 'var(--color-ink-muted)',

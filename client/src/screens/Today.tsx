@@ -198,7 +198,10 @@ export function Today() {
         <Card>
           <div className="mb-3 flex items-center justify-between">
             <p className="eyebrow">The run</p>
-            <Link to="/stats" className="text-[12px] text-ink-muted underline hover:text-ink">
+            <Link
+              to="/stats"
+              className="touch inline-block text-[12px] text-ink-muted underline hover:text-ink"
+            >
               Stats
             </Link>
           </div>

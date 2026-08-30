@@ -104,7 +104,7 @@ export function TaskRow({
           type="button"
           disabled={disabled}
           onClick={isRunning ? onStopTimer : onStartTimer}
-          className="press rounded-lg border px-3 py-1.5 font-mono text-xs disabled:opacity-40"
+          className="press touch rounded-lg border px-3 py-1.5 font-mono text-xs disabled:opacity-40"
           style={{
             borderColor: isRunning ? 'var(--color-clay)' : 'var(--color-mist)',
             color: isRunning ? 'var(--color-clay)' : 'var(--color-ink-soft)',
@@ -141,7 +141,7 @@ function Checkbox({
       aria-label={label}
       disabled={disabled}
       onClick={onClick}
-      className="press grid h-7 w-7 shrink-0 place-items-center rounded-md border disabled:opacity-40"
+      className="press touch grid h-7 w-7 shrink-0 place-items-center rounded-md border disabled:opacity-40"
       style={{
         borderColor: done ? 'var(--color-gold)' : 'var(--color-mist)',
         backgroundColor: done ? 'var(--color-gold)' : 'transparent',
@@ -176,7 +176,7 @@ function Stepper({
   disabled?: boolean
 }) {
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-2 sm:gap-1">
       <StepButton disabled={disabled} onClick={() => onStep(-step)} label="Decrease">
         &minus;
       </StepButton>
@@ -204,7 +204,7 @@ function StepButton({
       aria-label={label}
       disabled={disabled}
       onClick={onClick}
-      className="press grid h-7 w-7 place-items-center rounded-md border border-mist text-ink-soft hover:bg-cream-dark disabled:opacity-40"
+      className="press touch grid h-7 w-7 place-items-center rounded-md border border-mist text-ink-soft hover:bg-cream-dark disabled:opacity-40"
     >
       {children}
     </button>

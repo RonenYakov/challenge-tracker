@@ -27,7 +27,7 @@ export function Button({
     <button
       {...rest}
       disabled={disabled || loading}
-      className={`press inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium disabled:cursor-not-allowed disabled:opacity-40 ${VARIANTS[variant]} ${className}`}
+      className={`press inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2 text-[15px] font-medium disabled:cursor-not-allowed disabled:opacity-40 sm:min-h-0 sm:text-sm ${VARIANTS[variant]} ${className}`}
     >
       {children}
     </button>

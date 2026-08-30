@@ -104,7 +104,7 @@ export function Stats() {
               .map((task) => (
                 <li key={task.taskId}>
                   <div className="mb-1 flex items-baseline justify-between gap-3">
-                    <p dir="auto" className="truncate text-[14px]">
+                    <p className="truncate text-[14px]" style={{ unicodeBidi: 'plaintext', textAlign: 'left' }}>
                       {task.label}
                     </p>
                     <p className="tnum shrink-0 font-mono text-[12px] text-ink-muted">
