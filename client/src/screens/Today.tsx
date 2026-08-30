@@ -10,6 +10,7 @@ import { Heatmap, HeatmapLegend } from '../components/Heatmap'
 import { Button, Card, EmptyState, Skeleton, Stat } from '../components/ui'
 import { Reckoning } from '../components/Reckoning'
 import { Goals } from '../components/Goals'
+import { Journal } from '../components/Journal'
 
 export function Today() {
   const queryClient = useQueryClient()
@@ -212,6 +213,8 @@ export function Today() {
             />
           </div>
         </Card>
+
+        <Journal date={data.date!} initialNote={data.note ?? null} />
 
         <Goals challengeId={challenge.id} />
 

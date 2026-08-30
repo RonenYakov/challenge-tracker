@@ -84,6 +84,7 @@ export function toDayLog(r: Row): DayLog {
     status: r.status as DayLog['status'],
     loggedLate: Boolean(r.logged_late),
     closedAt: isoOrNull(r.closed_at),
+    note: strOrNull(r.note),
   }
 }
 

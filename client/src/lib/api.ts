@@ -112,6 +112,7 @@ export interface TodayResponse {
   dayNumber?: number
   daysRemaining?: number
   entries?: TaskEntry[]
+  note?: string | null
   completion?: number
   streak?: Streak
   graceTokensRemaining?: number
@@ -209,6 +210,9 @@ export const api = {
       `/api/goals/${goalId}/entries`,
       { value },
     ),
+
+  saveNote: (date: ISODate, note: string | null) =>
+    put<{ day: DayLog }>(`/api/days/${date}/note`, { note }),
 
   setEntry: (date: ISODate, taskId: string, value: number) =>
     put<DayWriteResponse>(`/api/days/${date}/entries/${taskId}`, { value }),

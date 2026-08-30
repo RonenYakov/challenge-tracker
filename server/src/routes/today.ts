@@ -52,6 +52,7 @@ export async function todayRoutes(app: FastifyInstance) {
       dayNumber: dayNumber(date, challenge.startDate),
       daysRemaining: Math.max(0, challenge.lengthDays - dayNumber(date, challenge.startDate)),
       entries,
+      note: todayLog?.note ?? null,
       completion: dayCompletion(entries, tasks),
       streak: computeStreak(currentAttempt),
       graceTokensRemaining: graceTokensRemaining(challenge, eventRows.map(toChallengeEvent)),
@@ -97,6 +98,29 @@ export async function todayRoutes(app: FastifyInstance) {
     const dayLog = await openDayForWriting(challenge, date)
     await startTimer(dayLog, taskId)
     return summarise(challenge, dayLog)
+  })
+
+  /**
+   * The day's journal entry. Saved on its own rather than through the entry endpoints,
+   * because writing a note is not progress on a rule and must never move the ring.
+   */
+  app.put('/api/days/:date/note', async (request) => {
+    const { date } = dateParam.parse(request.params)
+    const { note } = z
+      .object({ note: z.string().max(5000).nullable() })
+      .parse(request.body)
+
+    const challenge = await requireActive(request.user.id)
+    const dayLog = await openDayForWriting(challenge, date)
+
+    const trimmed = note?.trim()
+    const [row] = await sql`
+      update day_logs
+      set note = ${trimmed ? trimmed : null}
+      where id = ${dayLog.id}
+      returning *
+    `
+    return { day: toDayLog(row!) }
   })
 
   app.post('/api/days/:date/timer/:taskId/stop', async (request) => {

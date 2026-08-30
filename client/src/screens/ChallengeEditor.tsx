@@ -31,6 +31,11 @@ export function ChallengeEditor() {
 
   const addTask = useMutation({ mutationFn: (body: NewTask) => api.createTask(id, body), onSuccess: refresh })
   const removeTask = useMutation({ mutationFn: api.deleteTask, onSuccess: refresh })
+  const renameTask = useMutation({
+    mutationFn: ({ id: taskId, label }: { id: string; label: string }) =>
+      api.updateTask(taskId, { label }),
+    onSuccess: refresh,
+  })
   const activate = useMutation({
     mutationFn: () => api.activateChallenge(id),
     onSuccess: () => {
@@ -78,13 +83,22 @@ export function ChallengeEditor() {
               key={task.id}
               task={task}
               onRemove={() => removeTask.mutate(task.id)}
+              onRename={(label) => renameTask.mutate({ id: task.id, label })}
               removing={removeTask.isPending}
+              isRunning={isRunning}
             />
           ))}
         </ul>
 
         {activeTasks.length === 0 && (
           <p className="text-sm text-ink-muted">No rules yet. Add the first one below.</p>
+        )}
+
+        {activeTasks.length > 0 && (
+          <p className="mt-3 text-[12px] text-ink-muted">
+            Tap a rule to rename it. Targets stay locked while the challenge runs, because
+            changing one would re-score the days you have already finished.
+          </p>
         )}
 
         <AddTaskForm
@@ -132,22 +146,60 @@ export function ChallengeEditor() {
 function TaskLine({
   task,
   onRemove,
+  onRename,
   removing,
+  isRunning,
 }: {
   task: Task
   onRemove: () => void
+  onRename: (label: string) => void
   removing: boolean
+  isRunning: boolean
 }) {
+  const [editing, setEditing] = useState(false)
+  const [label, setLabel] = useState(task.label)
+
+  const commit = () => {
+    const next = label.trim()
+    setEditing(false)
+    if (next && next !== task.label) onRename(next)
+    else setLabel(task.label)
+  }
+
   return (
     <li className="flex items-center gap-3 rounded-xl border border-mist/60 bg-cream px-3 py-2.5">
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[15px]" style={{ unicodeBidi: 'plaintext', textAlign: 'left' }}>
-          {task.label}
-        </p>
+        {editing ? (
+          <Input
+            autoFocus
+            dir="auto"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            onBlur={commit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') commit()
+              if (e.key === 'Escape') {
+                setLabel(task.label)
+                setEditing(false)
+              }
+            }}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            title="Rename"
+            className="block w-full truncate text-left text-[15px] hover:text-ink-soft"
+            style={{ unicodeBidi: 'plaintext' }}
+          >
+            {task.label}
+          </button>
+        )}
         <p className="tnum mt-0.5 font-mono text-[11px] text-ink-muted">
           {task.kind === 'check'
             ? KIND_LABEL.check
             : `${task.targetValue} ${task.unit ?? ''} · ${KIND_LABEL[task.kind]}`}
+          {isRunning && task.kind !== 'check' && ' · locked while running'}
         </p>
       </div>
       <Button variant="ghost" disabled={removing} onClick={onRemove} className="px-2 text-[12px]">

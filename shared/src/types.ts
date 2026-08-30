@@ -49,6 +49,8 @@ export interface DayLog {
   status: DayStatus
   loggedLate: boolean
   closedAt: string | null
+  /** Optional journal entry for the day. */
+  note: string | null
 }
 
 export interface TaskEntry {
