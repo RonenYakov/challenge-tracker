@@ -7,6 +7,7 @@ import { HttpError } from './errors.js'
 import { challengeRoutes } from './routes/challenges.js'
 import { taskRoutes } from './routes/tasks.js'
 import { todayRoutes } from './routes/today.js'
+import { goalRoutes } from './routes/goals.js'
 
 export async function buildApp() {
   const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'info' } })
@@ -61,6 +62,7 @@ export async function buildApp() {
     await protectedRoutes.register(challengeRoutes)
     await protectedRoutes.register(taskRoutes)
     await protectedRoutes.register(todayRoutes)
+    await protectedRoutes.register(goalRoutes)
   })
 
   return app

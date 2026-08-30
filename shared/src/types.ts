@@ -79,3 +79,40 @@ export interface Streak {
   current: number
   best: number
 }
+
+/**
+ * An outcome for the whole challenge, tracked by a number moving from a starting
+ * reading toward a target by the final day. Distinct from a daily task: a goal never
+ * affects the streak and can never trigger a reset.
+ */
+export interface Goal {
+  id: string
+  challengeId: string
+  label: string
+  unit: string | null
+  startValue: number
+  targetValue: number
+  archived: boolean
+  createdAt: string
+}
+
+export interface GoalEntry {
+  id: string
+  goalId: string
+  loggedOn: ISODate
+  value: number
+  createdAt: string
+}
+
+export interface GoalProgress {
+  /** The most recent reading, or the start value if nothing is logged yet. */
+  current: number
+  /** Where a straight line from start to target would put you today. */
+  expected: number
+  /** 0..1 of the distance from start to target actually covered. */
+  completion: number
+  onPace: boolean
+  /** How much is still left to move, always zero or positive. */
+  remaining: number
+  direction: 'up' | 'down'
+}

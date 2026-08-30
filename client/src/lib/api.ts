@@ -2,6 +2,9 @@ import { createClient } from '@supabase/supabase-js'
 import type {
   Challenge,
   DayLog,
+  Goal,
+  GoalEntry,
+  GoalProgress,
   ISODate,
   Miss,
   Streak,
@@ -148,6 +151,20 @@ export interface NewChallenge {
   graceTokensTotal: number
 }
 
+export interface GoalWithProgress {
+  goal: Goal
+  entries: GoalEntry[]
+  progress: GoalProgress
+  daysRemaining: number
+}
+
+export interface NewGoal {
+  label: string
+  unit: string | null
+  startValue: number
+  targetValue: number
+}
+
 export interface NewTask {
   label: string
   kind: Task['kind']
@@ -181,6 +198,17 @@ export const api = {
       `/api/challenges/${challengeId}/days/${date}`,
     ),
   stats: (challengeId: string) => get<StatsResponse>(`/api/challenges/${challengeId}/stats`),
+
+  goals: (challengeId: string) =>
+    get<{ goals: GoalWithProgress[] }>(`/api/challenges/${challengeId}/goals`),
+  createGoal: (challengeId: string, body: NewGoal) =>
+    post<{ goal: Goal }>(`/api/challenges/${challengeId}/goals`, body),
+  deleteGoal: (goalId: string) => del(`/api/goals/${goalId}`),
+  logGoalReading: (goalId: string, value: number) =>
+    put<{ goal: Goal; entries: GoalEntry[]; progress: GoalProgress }>(
+      `/api/goals/${goalId}/entries`,
+      { value },
+    ),
 
   setEntry: (date: ISODate, taskId: string, value: number) =>
     put<DayWriteResponse>(`/api/days/${date}/entries/${taskId}`, { value }),

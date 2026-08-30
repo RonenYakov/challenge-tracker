@@ -9,6 +9,7 @@ import { TaskRow } from '../components/TaskRow'
 import { Heatmap, HeatmapLegend } from '../components/Heatmap'
 import { Button, Card, EmptyState, Skeleton, Stat } from '../components/ui'
 import { Reckoning } from '../components/Reckoning'
+import { Goals } from '../components/Goals'
 
 export function Today() {
   const queryClient = useQueryClient()
@@ -211,6 +212,8 @@ export function Today() {
             />
           </div>
         </Card>
+
+        <Goals challengeId={challenge.id} />
 
         <Card>
           <div className="mb-3 flex items-center justify-between">

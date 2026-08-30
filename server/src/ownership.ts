@@ -1,5 +1,5 @@
-import type { Challenge, Task } from '@ct/shared'
-import { sql, toChallenge, toTask } from './db.js'
+import type { Challenge, Goal, Task } from '@ct/shared'
+import { sql, toChallenge, toGoal, toTask } from './db.js'
 import { notFound } from './errors.js'
 
 /**
@@ -42,4 +42,21 @@ export async function loadActiveChallenge(userId: string): Promise<Challenge | n
     where user_id = ${userId} and status = 'active'
   `
   return row ? toChallenge(row) : null
+}
+
+export async function loadOwnedGoal(
+  userId: string,
+  goalId: string,
+): Promise<{ goal: Goal; challenge: Challenge }> {
+  const [row] = await sql`
+    select g.*, row_to_json(c.*) as challenge
+    from goals g
+    join challenges c on c.id = g.challenge_id
+    where g.id = ${goalId} and c.user_id = ${userId}
+  `
+  if (!row) throw notFound('Goal')
+  return {
+    goal: toGoal(row),
+    challenge: toChallenge(row.challenge as Record<string, unknown>),
+  }
 }

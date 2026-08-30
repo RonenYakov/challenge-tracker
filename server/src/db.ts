@@ -4,6 +4,8 @@ import type {
   Challenge,
   ChallengeEvent,
   DayLog,
+  Goal,
+  GoalEntry,
   Profile,
   Task,
   TaskEntry,
@@ -104,5 +106,28 @@ export function toChallengeEvent(r: Row): ChallengeEvent {
     dayNumber: num(r.day_number),
     attemptNo: num(r.attempt_no),
     occurredAt: iso(r.occurred_at),
+  }
+}
+
+export function toGoal(r: Row): Goal {
+  return {
+    id: str(r.id),
+    challengeId: str(r.challenge_id),
+    label: str(r.label),
+    unit: strOrNull(r.unit),
+    startValue: num(r.start_value),
+    targetValue: num(r.target_value),
+    archived: Boolean(r.archived),
+    createdAt: iso(r.created_at),
+  }
+}
+
+export function toGoalEntry(r: Row): GoalEntry {
+  return {
+    id: str(r.id),
+    goalId: str(r.goal_id),
+    loggedOn: isoDate(r.logged_on),
+    value: num(r.value),
+    createdAt: iso(r.created_at),
   }
 }
