@@ -148,3 +148,24 @@ export function graceTokensRemaining(
   ).length
   return Math.max(0, challenge.graceTokensTotal - spent)
 }
+
+/**
+ * The longest unbroken run across every attempt, not just the current one.
+ *
+ * `computeStreak` deliberately looks at one attempt, because that is the run in play.
+ * But after a reset it would report a best of zero, which quietly erases the evidence
+ * that you once managed 23 days. That evidence is most useful precisely when you have
+ * just lost the run, so it is kept separately rather than recomputed away.
+ *
+ * A run never spans a reset, even where the dates are consecutive: those were two
+ * different attempts and joining them would invent a streak that never happened.
+ */
+export function bestStreakEver(dayLogs: readonly DayLog[]): number {
+  const attempts = new Set(dayLogs.map((d) => d.attemptNo))
+  let best = 0
+  for (const attempt of attempts) {
+    const run = computeStreak(dayLogs.filter((d) => d.attemptNo === attempt))
+    best = Math.max(best, run.best)
+  }
+  return best
+}

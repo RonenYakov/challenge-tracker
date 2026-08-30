@@ -38,6 +38,12 @@ export interface Task {
   unit: string | null
   sortOrder: number
   isActive: boolean
+  /**
+   * Optional implementation intention: when and where this happens.
+   * "After I brush my teeth", "6am, kitchen". Specifying the cue is one of the few
+   * habit techniques with replicated effects, and it is the cheapest to offer.
+   */
+  cue: string | null
 }
 
 export interface DayLog {

@@ -130,6 +130,7 @@ export function Today() {
         challenge={challenge}
         miss={unresolvedMiss}
         tokensLeft={graceTokensRemaining ?? 0}
+        bestEver={data.bestEver ?? 0}
       />
     )
   }
@@ -137,6 +138,25 @@ export function Today() {
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
       <Card>
+        {/*
+          The day after a miss is where a slip turns into a collapse. Naming the rule
+          out loud is the single cheapest intervention against that, and it is phrased
+          as a plan rather than a warning: no red, no guilt, nothing to dismiss.
+        */}
+        {data.missedYesterday && (
+          <div
+            className="mb-4 rounded-xl px-3 py-2.5"
+            style={{ backgroundColor: 'hsl(18 66% 50% / 0.07)' }}
+          >
+            <p className="text-[14px]" style={{ color: 'var(--color-orange-dark)' }}>
+              Yesterday got away. Never miss twice.
+            </p>
+            <p className="mt-0.5 text-[12px] text-ink-muted">
+              One missed day changes almost nothing. Two in a row is how runs actually end.
+            </p>
+          </div>
+        )}
+
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="eyebrow">Day {String(dayNumber).padStart(2, '0')}</p>
@@ -204,7 +224,7 @@ export function Today() {
         <Card>
           <div className="grid grid-cols-3 gap-3">
             <Stat label="Streak" value={streak?.current ?? 0} tone="gold" />
-            <Stat label="Best" value={streak?.best ?? 0} />
+            <Stat label="Best ever" value={data.bestEver ?? 0} />
             <Stat
               label="Grace"
               value={graceTokensRemaining ?? 0}

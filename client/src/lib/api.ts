@@ -117,6 +117,8 @@ export interface TodayResponse {
   streak?: Streak
   graceTokensRemaining?: number
   unresolvedMiss?: Miss | null
+  missedYesterday?: boolean
+  bestEver?: number
 }
 
 export interface DayWriteResponse {
@@ -172,6 +174,7 @@ export interface NewTask {
   targetValue: number | null
   unit: string | null
   sortOrder: number
+  cue: string | null
 }
 
 export const api = {

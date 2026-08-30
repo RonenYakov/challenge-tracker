@@ -1,6 +1,8 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import {
+  addDays,
+  bestStreakEver,
   computeStreak,
   dayCompletion,
   dayNumber,
@@ -55,6 +57,11 @@ export async function todayRoutes(app: FastifyInstance) {
       note: todayLog?.note ?? null,
       completion: dayCompletion(entries, tasks),
       streak: computeStreak(currentAttempt),
+      // Never-miss-twice: the day after a miss is where a slip becomes a collapse,
+      // so the client is told explicitly rather than inferring it.
+      missedYesterday:
+        currentAttempt.find((d) => d.logDate === addDays(date, -1))?.status === 'incomplete',
+      bestEver: bestStreakEver(days),
       graceTokensRemaining: graceTokensRemaining(challenge, eventRows.map(toChallengeEvent)),
       unresolvedMiss: findUnresolvedMiss(days, challenge, new Date()),
     }

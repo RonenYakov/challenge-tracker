@@ -16,6 +16,7 @@ const taskFields = z.object({
   targetValue: z.number().positive().max(99_999_999).nullable().default(null),
   unit: z.string().trim().max(20).nullable().default(null),
   sortOrder: z.number().int().min(0).default(0),
+  cue: z.string().trim().max(120).nullable().default(null),
 })
 
 const createTask = taskFields.refine(
@@ -53,6 +54,7 @@ export async function taskRoutes(app: FastifyInstance) {
         target_value: body.targetValue,
         unit: body.unit,
         sort_order: body.sortOrder,
+        cue: body.cue,
       })}
       returning *
     `
@@ -84,6 +86,9 @@ export async function taskRoutes(app: FastifyInstance) {
       ...(body.targetValue !== undefined && { target_value: body.targetValue }),
       ...(body.unit !== undefined && { unit: body.unit }),
       ...(body.sortOrder !== undefined && { sort_order: body.sortOrder }),
+      // The cue is a note to yourself about when and where, not a scoring rule,
+      // so unlike kind and target it stays editable mid-challenge.
+      ...(body.cue !== undefined && { cue: body.cue }),
     }
     if (Object.keys(patch).length === 0) return { task }
 

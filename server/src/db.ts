@@ -71,6 +71,7 @@ export function toTask(r: Row): Task {
     unit: strOrNull(r.unit),
     sortOrder: num(r.sort_order),
     isActive: Boolean(r.is_active),
+    cue: strOrNull(r.cue),
   }
 }
 

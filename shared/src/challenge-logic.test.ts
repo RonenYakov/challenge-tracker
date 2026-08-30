@@ -8,6 +8,7 @@ import {
   computeStreak,
   canBackfill,
   graceTokensRemaining,
+  bestStreakEver,
 } from './challenge-logic.js'
 import type { Challenge, ChallengeEvent, DayLog, Task, TaskEntry } from './types.js'
 
@@ -58,6 +59,7 @@ function log(logDate: string, status: DayLog['status'], dayNo: number): DayLog {
     status,
     loggedLate: false,
     closedAt: null,
+    note: null,
   }
 }
 
@@ -369,5 +371,61 @@ describe('graceTokensRemaining', () => {
       ev('grace_spent', 2),
     ]
     expect(graceTokensRemaining(c, spent)).toBe(0)
+  })
+})
+
+describe('bestStreakEver', () => {
+  const log = (
+    logDate: string,
+    status: DayLog['status'],
+    attemptNo: number,
+  ): DayLog => ({
+    id: 'd-' + logDate + '-' + attemptNo,
+    challengeId: 'c1',
+    logDate,
+    dayNumber: 1,
+    attemptNo,
+    status,
+    loggedLate: false,
+    closedAt: null,
+    note: null,
+  })
+
+  it('is zero with no logs', () => {
+    expect(bestStreakEver([])).toBe(0)
+  })
+
+  it('matches the best of a single attempt', () => {
+    const logs = [
+      log('2026-08-01', 'complete', 1),
+      log('2026-08-02', 'complete', 1),
+      log('2026-08-03', 'complete', 1),
+    ]
+    expect(bestStreakEver(logs)).toBe(3)
+  })
+
+  it('remembers a long run from an abandoned attempt', () => {
+    const logs = [
+      log('2026-08-01', 'complete', 1),
+      log('2026-08-02', 'complete', 1),
+      log('2026-08-03', 'complete', 1),
+      log('2026-08-04', 'complete', 1),
+      log('2026-08-05', 'incomplete', 1),
+      // Reset. The new attempt is only two days old.
+      log('2026-08-06', 'complete', 2),
+      log('2026-08-07', 'complete', 2),
+    ]
+    expect(bestStreakEver(logs)).toBe(4)
+  })
+
+  it('does not let a run span a reset, even on consecutive dates', () => {
+    const logs = [
+      log('2026-08-01', 'complete', 1),
+      log('2026-08-02', 'complete', 1),
+      log('2026-08-03', 'complete', 2),
+      log('2026-08-04', 'complete', 2),
+    ]
+    // Two runs of two, not one run of four.
+    expect(bestStreakEver(logs)).toBe(2)
   })
 })

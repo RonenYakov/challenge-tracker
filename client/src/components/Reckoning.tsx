@@ -12,10 +12,12 @@ export function Reckoning({
   challenge,
   miss,
   tokensLeft,
+  bestEver,
 }: {
   challenge: Challenge
   miss: Miss
   tokensLeft: number
+  bestEver: number
 }) {
   const queryClient = useQueryClient()
   const [confirmingReset, setConfirmingReset] = useState(false)
@@ -44,6 +46,26 @@ export function Reckoning({
           {miss.date} closed with tasks left undone. You set the rules, so this is your call
           to make, not the app&rsquo;s.
         </p>
+
+        {/*
+          This screen appears at the exact moment the abstinence violation effect does:
+          one miss, then the "may as well quit" story. The research is genuinely
+          reassuring here, so it is stated plainly rather than replaced with cheerleading.
+          The point is to keep the decision in view, not to talk the user out of a reset.
+        */}
+        <p className="mt-3 rounded-lg bg-cream px-3 py-2.5 text-[13px] leading-relaxed text-ink-muted">
+          Worth knowing: in the study that produced the &ldquo;66 days to build a habit&rdquo;
+          figure, missing a single day made no measurable difference to how the habit
+          formed. One day off does not undo the run. Deciding you have failed is what
+          usually does.
+        </p>
+
+        {bestEver > 0 && (
+          <p className="tnum mt-2 font-mono text-[12px] text-ink-muted">
+            Your longest run so far: {bestEver} days. That happened, and a reset does not
+            erase it.
+          </p>
+        )}
 
         <div className="mt-6 grid gap-3">
           <div className="rounded-xl border border-mist bg-cream p-4">

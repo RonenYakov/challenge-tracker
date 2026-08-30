@@ -201,6 +201,11 @@ function TaskLine({
             : `${task.targetValue} ${task.unit ?? ''} · ${KIND_LABEL[task.kind]}`}
           {isRunning && task.kind !== 'check' && ' · locked while running'}
         </p>
+        {task.cue && (
+          <p className="mt-0.5 text-[11px] text-ink-muted" style={{ unicodeBidi: 'plaintext' }}>
+            {task.cue}
+          </p>
+        )}
       </div>
       <Button variant="ghost" disabled={removing} onClick={onRemove} className="px-2 text-[12px]">
         Remove
@@ -228,6 +233,7 @@ function AddTaskForm({
   const [kind, setKind] = useState<TaskKind>('check')
   const [targetValue, setTargetValue] = useState('')
   const [unit, setUnit] = useState('')
+  const [cue, setCue] = useState('')
 
   const needsTarget = kind !== 'check'
 
@@ -242,10 +248,12 @@ function AddTaskForm({
           targetValue: needsTarget ? Number(targetValue) : null,
           unit: needsTarget ? unit.trim() || (kind === 'timer' ? 'min' : null) : null,
           sortOrder: nextSortOrder,
+          cue: cue.trim() || null,
         })
         setLabel('')
         setTargetValue('')
         setUnit('')
+        setCue('')
         setKind('check')
       }}
     >
@@ -299,6 +307,20 @@ function AddTaskForm({
           </Field>
         </div>
       )}
+
+      <div className="mt-3">
+        <Field
+          label="When and where (optional)"
+          hint="Naming the moment is one of the few habit tricks with real evidence behind it. Pick a cue you already hit every day."
+        >
+          <Input
+            dir="auto"
+            value={cue}
+            onChange={(e) => setCue(e.target.value)}
+            placeholder="After I brush my teeth"
+          />
+        </Field>
+      </div>
 
       {error && (
         <p className="shake mt-3 text-sm" style={{ color: 'var(--color-clay)' }}>

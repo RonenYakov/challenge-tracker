@@ -89,6 +89,15 @@ export function TaskRow({
             {formatValue(value)} / {formatValue(goal)} {task.unit ?? ''}
           </p>
         )}
+        {/* The cue is the trigger you chose. Showing it turns the list into a plan. */}
+        {task.cue && !done && (
+          <p
+            className="mt-0.5 truncate text-[11px] text-ink-muted"
+            style={{ unicodeBidi: 'plaintext', textAlign: 'left' }}
+          >
+            {task.cue}
+          </p>
+        )}
       </div>
 
       {task.kind === 'count' && (
