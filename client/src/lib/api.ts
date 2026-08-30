@@ -11,10 +11,15 @@ import type {
 
 const url = import.meta.env.VITE_SUPABASE_URL
 const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
-const apiUrl = import.meta.env.VITE_API_URL
 
-if (!url || !key || !apiUrl) {
-  throw new Error('Missing VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY, or VITE_API_URL. Copy client/.env.example to client/.env.')
+// In production the API is served from this same deployment under /api, so an empty
+// base means same-origin. Locally the API runs on its own port and VITE_API_URL is set.
+const apiUrl = import.meta.env.VITE_API_URL ?? ''
+
+if (!url || !key) {
+  throw new Error(
+    'Missing VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_KEY. Copy client/.env.example to client/.env.',
+  )
 }
 
 export const supabase = createClient(url, key, {

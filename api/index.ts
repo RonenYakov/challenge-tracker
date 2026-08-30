@@ -1,13 +1,15 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { buildApp } from '../src/app.js'
+import { buildApp } from '../server/src/app.js'
 
 /**
- * Vercel serverless entry point.
+ * Vercel serverless entry point for the whole API.
  *
- * `src/index.ts` calls `listen()`, which a serverless runtime never wants. Here the
- * Fastify instance is built once per warm container and handed each request through
- * its internal HTTP server, so routing, hooks and the error handler all behave exactly
- * as they do locally.
+ * It lives at the repository root rather than inside `server/` so the deployment can
+ * see the npm workspaces: `@ct/shared` only resolves when the install runs from the
+ * root. `server/src/index.ts` remains the local entry point and still calls `listen()`.
+ *
+ * The client is served from this same deployment, so requests are same-origin and CORS
+ * never comes into it in production.
  */
 let ready: Promise<Awaited<ReturnType<typeof buildApp>>> | null = null
 

@@ -3,7 +3,11 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "workspaces": ["shared", "server", "client"],
+  "workspaces": [
+    "shared",
+    "server",
+    "client"
+  ],
   "scripts": {
     "dev": "npm run dev --workspace=server & npm run dev --workspace=client",
     "dev:server": "npm run dev --workspace=server",
@@ -14,6 +18,7 @@
   },
   "devDependencies": {
     "typescript": "^5.7.3",
-    "vitest": "^3.0.5"
+    "vitest": "^3.0.5",
+    "@types/node": "^22.10.7"
   }
 }
