@@ -74,6 +74,10 @@ export function toTask(r: Row): Task {
     sortOrder: num(r.sort_order),
     isActive: Boolean(r.is_active),
     cue: strOrNull(r.cue),
+    scheduleMode: r.schedule_mode as Task['scheduleMode'],
+    scheduledTime: r.scheduled_time === null || r.scheduled_time === undefined
+      ? null
+      : String(r.scheduled_time).slice(0, 5),
   }
 }
 

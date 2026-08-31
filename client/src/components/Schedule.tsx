@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { endTimeOf, formatDuration, minutesBetweenTimes } from '@ct/shared'
 import { api, type NewEvent } from '../lib/api'
 import { Button, Card, Field, Input, Skeleton } from './ui'
 
@@ -89,8 +90,10 @@ export function Schedule({ challengeId, manage }: { challengeId: string; manage?
                   {event.title}
                 </p>
                 <p className="tnum mt-0.5 font-mono text-[11px] text-ink-muted">
-                  {event.weekdays.map((d) => DAYS[d]).join(' ')} · {event.timeOfDay} ·{' '}
-                  {event.durationMinutes} min
+                  {event.weekdays.map((d) => DAYS[d]).join(' ')} · {event.timeOfDay}
+                  {'–'}
+                  {endTimeOf(event.timeOfDay, event.durationMinutes)} ·{' '}
+                  {formatDuration(event.durationMinutes)}
                 </p>
               </div>
               <Button
@@ -138,7 +141,11 @@ function NewEventForm({
   const [title, setTitle] = useState('')
   const [weekdays, setWeekdays] = useState<number[]>([])
   const [timeOfDay, setTimeOfDay] = useState('18:00')
-  const [durationMinutes, setDurationMinutes] = useState(60)
+  const [endTime, setEndTime] = useState('19:00')
+
+  // Derived rather than typed. A shift from 17:30 to 01:00 is 450 minutes, which is
+  // not a number anyone should be asked to work out.
+  const durationMinutes = minutesBetweenTimes(timeOfDay, endTime)
 
   const toggle = (day: number) =>
     setWeekdays((current) =>
@@ -188,7 +195,7 @@ function NewEventForm({
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-3">
-        <Field label="Time">
+        <Field label="Starts">
           <Input
             type="time"
             required
@@ -196,17 +203,20 @@ function NewEventForm({
             onChange={(e) => setTimeOfDay(e.target.value)}
           />
         </Field>
-        <Field label="Minutes">
+        <Field label="Ends">
           <Input
-            type="number"
-            min={5}
-            max={1440}
+            type="time"
             required
-            value={durationMinutes}
-            onChange={(e) => setDurationMinutes(Number(e.target.value))}
+            value={endTime}
+            onChange={(e) => setEndTime(e.target.value)}
           />
         </Field>
       </div>
+
+      <p className="tnum mt-1.5 font-mono text-[12px] text-ink-muted">
+        {formatDuration(durationMinutes)}
+        {endTime <= timeOfDay && ' · ends the next day'}
+      </p>
 
       {error && (
         <p className="shake mt-3 text-sm" style={{ color: 'var(--color-clay)' }}>

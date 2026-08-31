@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { weekdayOf, occursOn, occurrencesBetween } from './schedule-logic.js'
+import {
+  weekdayOf,
+  occursOn,
+  occurrencesBetween,
+  minutesBetweenTimes,
+  endTimeOf,
+} from './schedule-logic.js'
 import type { ScheduledEvent } from './types.js'
 
 function event(over: Partial<ScheduledEvent> = {}): ScheduledEvent {
@@ -88,5 +94,41 @@ describe('occurrencesBetween', () => {
     // Three a week for a year, give or take the partial weeks at each end.
     expect(found.length).toBeGreaterThan(150)
     expect(found.length).toBeLessThan(160)
+  })
+})
+
+describe('minutesBetweenTimes', () => {
+  it('measures a normal daytime span', () => {
+    expect(minutesBetweenTimes('09:00', '17:30')).toBe(510)
+  })
+
+  it('wraps past midnight for a late shift', () => {
+    // 17:30 to 01:00 is seven and a half hours, not a negative number.
+    expect(minutesBetweenTimes('17:30', '01:00')).toBe(450)
+  })
+
+  it('treats an identical start and end as a full day, not zero', () => {
+    // Otherwise a typo silently produces an event with no duration at all.
+    expect(minutesBetweenTimes('09:00', '09:00')).toBe(1440)
+  })
+
+  it('handles a one minute span either side of midnight', () => {
+    expect(minutesBetweenTimes('23:59', '00:00')).toBe(1)
+    expect(minutesBetweenTimes('00:00', '00:01')).toBe(1)
+  })
+})
+
+describe('endTimeOf', () => {
+  it('adds a duration to a start time', () => {
+    expect(endTimeOf('09:00', 90)).toBe('10:30')
+  })
+
+  it('wraps past midnight', () => {
+    expect(endTimeOf('17:30', 450)).toBe('01:00')
+    expect(endTimeOf('23:30', 60)).toBe('00:30')
+  })
+
+  it('never produces an hour of 24', () => {
+    expect(endTimeOf('23:00', 60)).toBe('00:00')
   })
 })

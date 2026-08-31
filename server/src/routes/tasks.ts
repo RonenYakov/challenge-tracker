@@ -17,6 +17,8 @@ const taskFields = z.object({
   unit: z.string().trim().max(20).nullable().default(null),
   sortOrder: z.number().int().min(0).default(0),
   cue: z.string().trim().max(120).nullable().default(null),
+  scheduleMode: z.enum(['unset', 'anytime', 'fixed', 'anchored']).default('unset'),
+  scheduledTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Use HH:MM').nullable().default(null),
 })
 
 const createTask = taskFields.refine(
@@ -55,6 +57,8 @@ export async function taskRoutes(app: FastifyInstance) {
         unit: body.unit,
         sort_order: body.sortOrder,
         cue: body.cue,
+        schedule_mode: body.scheduleMode,
+        scheduled_time: body.scheduleMode === 'fixed' ? body.scheduledTime : null,
       })}
       returning *
     `
@@ -66,6 +70,10 @@ export async function taskRoutes(app: FastifyInstance) {
     const { id } = idParam.parse(request.params)
     const body = updateTask.parse(request.body)
     const { task, challenge } = await loadOwnedTask(request.user.id, id)
+
+    if (body.scheduleMode === 'fixed' && !(body.scheduledTime ?? task.scheduledTime)) {
+      throw badRequest('A rule at a set time needs a time.')
+    }
 
     const kind = body.kind ?? task.kind
     const targetValue = body.targetValue !== undefined ? body.targetValue : task.targetValue
@@ -89,6 +97,16 @@ export async function taskRoutes(app: FastifyInstance) {
       // The cue is a note to yourself about when and where, not a scoring rule,
       // so unlike kind and target it stays editable mid-challenge.
       ...(body.cue !== undefined && { cue: body.cue }),
+      ...(body.scheduleMode !== undefined && { schedule_mode: body.scheduleMode }),
+    }
+
+    // The database rejects a time on a non-fixed rule, so keep the pair consistent
+    // here rather than letting a mode change trip a constraint.
+    const nextMode = body.scheduleMode ?? task.scheduleMode
+    if (body.scheduleMode !== undefined || body.scheduledTime !== undefined) {
+      Object.assign(patch, {
+        scheduled_time: nextMode === 'fixed' ? (body.scheduledTime ?? task.scheduledTime) : null,
+      })
     }
     if (Object.keys(patch).length === 0) return { task }
 

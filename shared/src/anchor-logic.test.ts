@@ -17,7 +17,8 @@ function profile(over: Partial<RoutineProfile> = {}): RoutineProfile {
 function task(over: Partial<Task> = {}): Task {
   return {
     id: 't', challengeId: 'c', label: 'Read 10 pages', kind: 'check',
-    targetValue: null, unit: null, sortOrder: 0, isActive: true, cue: null, ...over,
+    targetValue: null, unit: null, sortOrder: 0, isActive: true, cue: null,
+    scheduleMode: 'unset', scheduledTime: null, ...over,
   }
 }
 
@@ -80,6 +81,17 @@ describe('suggestAnchors', () => {
   it('never returns duplicates', () => {
     const found = suggestAnchors(profile({ workEnd: '18:00', sleepTime: '18:00' }), task())
     expect(new Set(found.map((a) => a.cue)).size).toBe(found.length)
+  })
+
+  it('offers nothing for a rule that is spread across the whole day', () => {
+    // Drinking 1.5L of water has no single moment. Suggesting one is noise.
+    const water = task({ label: '1.5 ליטר מים ביום', scheduleMode: 'anytime' })
+    expect(suggestAnchors(profile({ hasKids: true }), water)).toEqual([])
+  })
+
+  it('offers nothing for a rule already pinned to a clock time', () => {
+    const pinned = task({ label: 'LeetCode', scheduleMode: 'fixed', scheduledTime: '10:00' })
+    expect(suggestAnchors(profile(), pinned)).toEqual([])
   })
 
   it('caps the list so the user is choosing, not reading', () => {

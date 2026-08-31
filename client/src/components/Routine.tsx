@@ -2,17 +2,16 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../lib/api'
 import { Button, Card, Field, Input, Skeleton } from './ui'
+import { TaskSchedule } from './TaskSchedule'
 
 /**
- * Four questions about the shape of the day, used only to propose anchors for habit
- * stacking. The app never applies a suggestion on its own: it offers candidates built
- * from the user's own routine, and accepting one writes it to the task's cue exactly as
- * typing it would.
+ * Four optional questions about the shape of the day, then one tap per rule to say how
+ * that rule sits in it.
  *
- * That split is deliberate. The effect behind implementation intentions comes from the
- * person committing to a moment, and people engage more with suggestions they can
- * override than with a schedule handed to them. Everything here is optional; with no
- * answers there are no suggestions, rather than generic advice pretending to be personal.
+ * The app proposes, the user commits. The effect behind implementation intentions comes
+ * from the person choosing a moment, and people engage more with suggestions they can
+ * override than with a plan handed to them. With nothing filled in there are no
+ * suggestions, rather than advice that would fit anyone.
  */
 export function Routine({ challengeId }: { challengeId: string }) {
   const queryClient = useQueryClient()
@@ -27,19 +26,19 @@ export function Routine({ challengeId }: { challengeId: string }) {
     void queryClient.invalidateQueries({ queryKey: ['anchors', challengeId] })
     void queryClient.invalidateQueries({ queryKey: ['tasks', challengeId] })
     void queryClient.invalidateQueries({ queryKey: ['today'] })
+    void queryClient.invalidateQueries({ queryKey: ['calendar-link'] })
   }
 
-  const applyCue = useMutation({
-    mutationFn: ({ taskId, cue }: { taskId: string; cue: string }) =>
-      api.updateTask(taskId, { cue }),
-    onSuccess: refresh,
-  })
-
-  if (suggestions.isPending) return <Card><Skeleton className="h-24 w-full" /></Card>
+  if (suggestions.isPending) {
+    return (
+      <Card>
+        <Skeleton className="h-24 w-full" />
+      </Card>
+    )
+  }
 
   const routine = suggestions.data?.routine ?? null
   const rows = suggestions.data?.suggestions ?? []
-  const hasAnchors = rows.some((r) => r.anchors.length > 0)
 
   return (
     <Card>
@@ -51,7 +50,7 @@ export function Routine({ challengeId }: { challengeId: string }) {
             onClick={() => setEditing(true)}
             className="touch text-[12px] text-ink-muted underline hover:text-ink"
           >
-            Edit
+            Edit hours
           </button>
         )}
       </div>
@@ -59,9 +58,9 @@ export function Routine({ challengeId }: { challengeId: string }) {
       {!routine && !editing && (
         <div>
           <p className="text-[13px] text-ink-muted">
-            Tell the app roughly when you wake, work and sleep, and it will suggest
-            moments to attach each rule to. Anchoring a habit to something you already do
-            every day is the most reliable way to make it stick. You pick, it only offers.
+            Tell the app roughly when you wake, work and sleep, and it can suggest moments
+            to attach each rule to. Anchoring a habit to something you already do every day
+            is the most reliable way to make it stick. You pick; it only offers.
           </p>
           <Button variant="secondary" className="mt-3" onClick={() => setEditing(true)}>
             Answer four questions
@@ -81,49 +80,19 @@ export function Routine({ challengeId }: { challengeId: string }) {
       )}
 
       {routine && !editing && (
-        <div className="grid gap-4">
-          {!hasAnchors && (
-            <p className="text-[13px] text-ink-muted">
-              Not enough to go on yet. Fill in a couple of times and suggestions appear.
-            </p>
-          )}
-
-          {rows
-            .filter((row) => row.anchors.length > 0)
-            .map((row) => (
-              <div key={row.taskId}>
-                <p
-                  className="truncate text-[14px]"
-                  style={{ unicodeBidi: 'plaintext', textAlign: 'left' }}
-                >
-                  {row.label}
-                </p>
-                {row.currentCue ? (
-                  <p className="mt-0.5 text-[12px]" style={{ color: 'var(--color-sage)' }}>
-                    Anchored: {row.currentCue}
-                  </p>
-                ) : (
-                  <div className="mt-1.5 flex flex-wrap gap-1.5">
-                    {row.anchors.map((anchor) => (
-                      <button
-                        key={anchor.cue}
-                        type="button"
-                        disabled={applyCue.isPending}
-                        onClick={() => applyCue.mutate({ taskId: row.taskId, cue: anchor.cue })}
-                        className="press touch rounded-full border border-mist px-3 py-2 text-[12px] text-ink-soft hover:bg-cream-dark disabled:opacity-40 sm:py-1"
-                      >
-                        {anchor.cue}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-
+        <div className="grid gap-5">
           <p className="text-[12px] text-ink-muted">
-            These are suggestions, not a plan. Tap one to use it, or write your own on the
-            rule itself.
+            Say how each rule sits in your day. Suggestions only appear where they make
+            sense: something spread across the whole day has no single moment to attach to.
           </p>
+
+          {rows.map((row) => (
+            <TaskSchedule key={row.taskId} row={row} onChanged={refresh} />
+          ))}
+
+          {rows.length === 0 && (
+            <p className="text-[13px] text-ink-muted">Add some rules first.</p>
+          )}
         </div>
       )}
     </Card>
@@ -135,7 +104,13 @@ function RoutineForm({
   onSaved,
   onCancel,
 }: {
-  initial: { wakeTime: string | null; workStart: string | null; workEnd: string | null; sleepTime: string | null; hasKids: boolean } | null
+  initial: {
+    wakeTime: string | null
+    workStart: string | null
+    workEnd: string | null
+    sleepTime: string | null
+    hasKids: boolean
+  } | null
   onSaved: () => void
   onCancel: () => void
 }) {

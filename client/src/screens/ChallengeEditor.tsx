@@ -257,6 +257,9 @@ function AddTaskForm({
           unit: needsTarget ? unit.trim() || (kind === 'timer' ? 'min' : null) : null,
           sortOrder: nextSortOrder,
           cue: cue.trim() || null,
+          // How it sits in the day is chosen afterwards, one tap per rule, in "Your day".
+          scheduleMode: cue.trim() ? 'anchored' : 'unset',
+          scheduledTime: null,
         })
         setLabel('')
         setTargetValue('')

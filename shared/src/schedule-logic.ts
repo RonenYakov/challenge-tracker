@@ -36,3 +36,38 @@ export function occurrencesBetween(
     (a, b) => a.date.localeCompare(b.date) || a.event.timeOfDay.localeCompare(b.event.timeOfDay),
   )
 }
+
+function toMinutes(time: string): number {
+  const [h, m] = time.split(':').map(Number)
+  return h! * 60 + m!
+}
+
+/**
+ * Length of a span given a start and end time, wrapping past midnight.
+ *
+ * A work shift from 17:30 to 01:00 is seven and a half hours, not minus sixteen. An
+ * identical start and end means a full day rather than nothing, since a zero-length
+ * event is never what anyone meant.
+ */
+export function minutesBetweenTimes(from: string, to: string): number {
+  const diff = toMinutes(to) - toMinutes(from)
+  if (diff > 0) return diff
+  return diff + 24 * 60
+}
+
+/** The clock time a duration lands on, wrapping past midnight. */
+export function endTimeOf(start: string, durationMinutes: number): string {
+  const total = (toMinutes(start) + durationMinutes) % (24 * 60)
+  const hh = String(Math.floor(total / 60)).padStart(2, '0')
+  const mm = String(total % 60).padStart(2, '0')
+  return `${hh}:${mm}`
+}
+
+/** '7h 30m', '45m', '2h' — for showing a duration without making anyone count. */
+export function formatDuration(minutes: number): string {
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  if (h === 0) return `${m}m`
+  if (m === 0) return `${h}h`
+  return `${h}h ${m}m`
+}

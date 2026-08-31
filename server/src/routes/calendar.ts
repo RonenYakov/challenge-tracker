@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { addDays, buildIcs } from '@ct/shared'
-import { sql, toChallenge, toScheduledEvent } from '../db.js'
+import { sql, toChallenge, toScheduledEvent, toTask } from '../db.js'
 import { notFound } from '../errors.js'
 
 /**
@@ -34,8 +34,32 @@ export async function calendarRoutes(app: FastifyInstance) {
       ? await sql`select * from scheduled_events where challenge_id = ${challenge.id}`
       : []
 
+    // Rules pinned to a clock time belong in the calendar too: "LeetCode at 10:00"
+    // is a daily commitment, and seeing it beside real meetings is the point of
+    // pinning it. They ride in as every-day events built from the same shape.
+    const pinnedRows = challenge
+      ? await sql`
+          select * from tasks
+          where challenge_id = ${challenge.id}
+            and is_active = true
+            and schedule_mode = 'fixed'
+            and scheduled_time is not null
+        `
+      : []
+
+    const pinned = pinnedRows.map(toTask).map((task) => ({
+      id: task.id,
+      challengeId: task.challengeId,
+      title: task.label,
+      weekdays: [0, 1, 2, 3, 4, 5, 6],
+      timeOfDay: task.scheduledTime!,
+      durationMinutes: task.kind === 'timer' ? (task.targetValue ?? 30) : 15,
+      googleEventId: null,
+      syncedAt: null,
+    }))
+
     const ics = buildIcs({
-      events: eventRows.map(toScheduledEvent),
+      events: [...eventRows.map(toScheduledEvent), ...pinned],
       timezone: challenge?.timezone ?? 'UTC',
       from: challenge?.startDate ?? '2026-01-01',
       until: challenge ? addDays(challenge.startDate, challenge.lengthDays - 1) : '2026-01-01',

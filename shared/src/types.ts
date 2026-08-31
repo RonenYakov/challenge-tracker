@@ -44,7 +44,19 @@ export interface Task {
    * habit techniques with replicated effects, and it is the cheapest to offer.
    */
   cue: string | null
+  /**
+   * How this rule sits in the day.
+   * `unset`    not decided yet
+   * `anytime`  spread across the day, no single moment (drinking water)
+   * `fixed`    happens at a set clock time (LeetCode at 10:00)
+   * `anchored` attached to something else you already do (after brushing teeth)
+   */
+  scheduleMode: TaskScheduleMode
+  /** 'HH:MM', set only when scheduleMode is 'fixed'. */
+  scheduledTime: string | null
 }
+
+export type TaskScheduleMode = 'unset' | 'anytime' | 'fixed' | 'anchored'
 
 export interface DayLog {
   id: string

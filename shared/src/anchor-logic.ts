@@ -36,6 +36,11 @@ interface Candidate extends AnchorSuggestion {
  * an empty list rather than advice that could have been written for anyone.
  */
 export function suggestAnchors(profile: RoutineProfile, task: Task): AnchorSuggestion[] {
+  // A rule spread across the whole day has no single moment to attach to, and one
+  // pinned to a clock time already has its answer. Offering anchors for either is
+  // how "drink 1.5L of water" ended up suggested for bedtime.
+  if (task.scheduleMode === 'anytime' || task.scheduleMode === 'fixed') return []
+
   const needed = minutesNeeded(task)
   const candidates: Candidate[] = []
 

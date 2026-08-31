@@ -79,6 +79,8 @@ export async function routineRoutes(app: FastifyInstance) {
         taskId: task.id,
         label: task.label,
         currentCue: task.cue,
+        scheduleMode: task.scheduleMode,
+        scheduledTime: task.scheduledTime,
         anchors: suggestAnchors(routine, task),
       })),
     }

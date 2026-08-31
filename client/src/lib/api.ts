@@ -183,6 +183,8 @@ export interface TaskAnchors {
   taskId: string
   label: string
   currentCue: string | null
+  scheduleMode: Task['scheduleMode']
+  scheduledTime: string | null
   anchors: AnchorSuggestion[]
 }
 
@@ -193,6 +195,8 @@ export interface NewTask {
   unit: string | null
   sortOrder: number
   cue: string | null
+  scheduleMode: Task['scheduleMode']
+  scheduledTime: string | null
 }
 
 export const api = {
@@ -208,6 +212,12 @@ export const api = {
     post<{ challenge: Challenge }>(`/api/challenges/${id}/resolve-miss`, { action }),
 
   tasks: (challengeId: string) => get<{ tasks: Task[] }>(`/api/challenges/${challengeId}/tasks`),
+  setTaskSchedule: (
+    taskId: string,
+    scheduleMode: Task['scheduleMode'],
+    scheduledTime: string | null,
+  ) => patch<{ task: Task }>(`/api/tasks/${taskId}`, { scheduleMode, scheduledTime }),
+
   createTask: (challengeId: string, body: NewTask) =>
     post<{ task: Task }>(`/api/challenges/${challengeId}/tasks`, body),
   updateTask: (taskId: string, body: Partial<NewTask>) =>
