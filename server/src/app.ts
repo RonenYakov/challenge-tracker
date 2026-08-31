@@ -8,6 +8,8 @@ import { challengeRoutes } from './routes/challenges.js'
 import { taskRoutes } from './routes/tasks.js'
 import { todayRoutes } from './routes/today.js'
 import { goalRoutes } from './routes/goals.js'
+import { eventRoutes } from './routes/events.js'
+import { routineRoutes } from './routes/routine.js'
 
 export async function buildApp() {
   const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'info' } })
@@ -63,6 +65,8 @@ export async function buildApp() {
     await protectedRoutes.register(taskRoutes)
     await protectedRoutes.register(todayRoutes)
     await protectedRoutes.register(goalRoutes)
+    await protectedRoutes.register(eventRoutes)
+    await protectedRoutes.register(routineRoutes)
   })
 
   return app

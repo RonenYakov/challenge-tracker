@@ -1,12 +1,16 @@
 import { createClient } from '@supabase/supabase-js'
 import type {
+  AnchorSuggestion,
   Challenge,
   DayLog,
+  EventOccurrence,
   Goal,
   GoalEntry,
   GoalProgress,
   ISODate,
   Miss,
+  RoutineProfile,
+  ScheduledEvent,
   Streak,
   Task,
   TaskEntry,
@@ -168,6 +172,20 @@ export interface NewGoal {
   targetValue: number
 }
 
+export interface NewEvent {
+  title: string
+  weekdays: number[]
+  timeOfDay: string
+  durationMinutes: number
+}
+
+export interface TaskAnchors {
+  taskId: string
+  label: string
+  currentCue: string | null
+  anchors: AnchorSuggestion[]
+}
+
 export interface NewTask {
   label: string
   kind: Task['kind']
@@ -212,6 +230,22 @@ export const api = {
     put<{ goal: Goal; entries: GoalEntry[]; progress: GoalProgress }>(
       `/api/goals/${goalId}/entries`,
       { value },
+    ),
+
+  events: (challengeId: string) =>
+    get<{ events: ScheduledEvent[]; upcoming: EventOccurrence[] }>(
+      `/api/challenges/${challengeId}/events`,
+    ),
+  createEvent: (challengeId: string, body: NewEvent) =>
+    post<{ event: ScheduledEvent }>(`/api/challenges/${challengeId}/events`, body),
+  deleteEvent: (eventId: string) => del(`/api/events/${eventId}`),
+
+  routine: () => get<{ routine: RoutineProfile | null }>('/api/routine'),
+  saveRoutine: (body: Omit<RoutineProfile, 'updatedAt'>) =>
+    put<{ routine: RoutineProfile }>('/api/routine', body),
+  anchorSuggestions: (challengeId: string) =>
+    get<{ routine: RoutineProfile | null; suggestions: TaskAnchors[] }>(
+      `/api/challenges/${challengeId}/anchor-suggestions`,
     ),
 
   saveNote: (date: ISODate, note: string | null) =>

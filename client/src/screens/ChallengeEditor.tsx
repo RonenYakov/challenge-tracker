@@ -4,6 +4,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Task, TaskKind } from '@ct/shared'
 import { api, type NewTask } from '../lib/api'
 import { Button, Card, Field, Input, Skeleton } from '../components/ui'
+import { Schedule } from '../components/Schedule'
+import { Routine } from '../components/Routine'
 
 const KIND_LABEL: Record<TaskKind, string> = {
   check: 'Done / not done',
@@ -108,6 +110,11 @@ export function ChallengeEditor() {
           onSubmit={(body) => addTask.mutate(body)}
         />
       </Card>
+
+      <div className="mt-4 grid gap-4">
+        <Routine challengeId={id} />
+        <Schedule challengeId={id} manage />
+      </div>
 
       <div className="mt-5 flex flex-wrap items-center gap-2">
         {!isRunning && (

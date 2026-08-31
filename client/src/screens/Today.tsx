@@ -11,6 +11,7 @@ import { Button, Card, EmptyState, Skeleton, Stat } from '../components/ui'
 import { Reckoning } from '../components/Reckoning'
 import { Goals } from '../components/Goals'
 import { Journal } from '../components/Journal'
+import { Schedule } from '../components/Schedule'
 
 export function Today() {
   const queryClient = useQueryClient()
@@ -237,6 +238,8 @@ export function Today() {
         <Journal date={data.date!} initialNote={data.note ?? null} />
 
         <Goals challengeId={challenge.id} />
+
+        <Schedule challengeId={challenge.id} />
 
         <Card>
           <div className="mb-3 flex items-center justify-between">

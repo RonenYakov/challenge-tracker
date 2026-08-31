@@ -1,3 +1,5 @@
 export * from './types.js'
 export * from './challenge-logic.js'
 export * from './goal-logic.js'
+export * from './schedule-logic.js'
+export * from './anchor-logic.js'

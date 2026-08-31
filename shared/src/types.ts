@@ -124,3 +124,47 @@ export interface GoalProgress {
   remaining: number
   direction: 'up' | 'down'
 }
+
+/**
+ * A weekly recurring event that supports the challenge without being scored by it.
+ * Missing one never affects the streak; that is what daily tasks are for.
+ */
+export interface ScheduledEvent {
+  id: string
+  challengeId: string
+  title: string
+  /** 0 = Sunday through 6 = Saturday, matching Date#getUTCDay. */
+  weekdays: number[]
+  /** 'HH:MM' in the challenge's timezone. */
+  timeOfDay: string
+  durationMinutes: number
+  googleEventId: string | null
+  syncedAt: string | null
+}
+
+export interface EventOccurrence {
+  event: ScheduledEvent
+  date: ISODate
+}
+
+/**
+ * A few facts about the shape of the user's day, used only to propose candidate
+ * anchors for habit stacking. Every field is optional; the suggestions simply get
+ * thinner the less is known.
+ */
+export interface RoutineProfile {
+  /** 'HH:MM', all optional. */
+  wakeTime: string | null
+  workStart: string | null
+  workEnd: string | null
+  sleepTime: string | null
+  hasKids: boolean
+  updatedAt: string
+}
+
+export interface AnchorSuggestion {
+  /** The cue text, ready to be accepted or edited. */
+  cue: string
+  /** Roughly when it lands, for ordering. Null when the moment has no clock time. */
+  at: string | null
+}

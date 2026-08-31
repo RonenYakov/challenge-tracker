@@ -7,6 +7,8 @@ import type {
   Goal,
   GoalEntry,
   Profile,
+  RoutineProfile,
+  ScheduledEvent,
   Task,
   TaskEntry,
 } from '@ct/shared'
@@ -131,5 +133,33 @@ export function toGoalEntry(r: Row): GoalEntry {
     loggedOn: isoDate(r.logged_on),
     value: num(r.value),
     createdAt: iso(r.created_at),
+  }
+}
+
+export function toScheduledEvent(r: Row): ScheduledEvent {
+  return {
+    id: str(r.id),
+    challengeId: str(r.challenge_id),
+    title: str(r.title),
+    weekdays: (r.weekdays as unknown[]).map(Number).sort((a, b) => a - b),
+    // Postgres hands back 'HH:MM:SS'; the app speaks 'HH:MM'.
+    timeOfDay: str(r.time_of_day).slice(0, 5),
+    durationMinutes: num(r.duration_minutes),
+    googleEventId: strOrNull(r.google_event_id),
+    syncedAt: isoOrNull(r.synced_at),
+  }
+}
+
+const timeOrNull = (v: unknown): string | null =>
+  v === null || v === undefined ? null : String(v).slice(0, 5)
+
+export function toRoutineProfile(r: Row): RoutineProfile {
+  return {
+    wakeTime: timeOrNull(r.wake_time),
+    workStart: timeOrNull(r.work_start),
+    workEnd: timeOrNull(r.work_end),
+    sleepTime: timeOrNull(r.sleep_time),
+    hasKids: Boolean(r.has_kids),
+    updatedAt: iso(r.updated_at),
   }
 }
