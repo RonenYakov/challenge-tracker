@@ -105,13 +105,19 @@ export interface Streak {
  * reading toward a target by the final day. Distinct from a daily task: a goal never
  * affects the streak and can never trigger a reset.
  */
+export type GoalKind = 'number' | 'milestone'
+
 export interface Goal {
   id: string
   challengeId: string
   label: string
+  kind: GoalKind
   unit: string | null
-  startValue: number
-  targetValue: number
+  /** Both null for a milestone, both set for a numeric goal. */
+  startValue: number | null
+  targetValue: number | null
+  /** Set only when a milestone has been ticked. */
+  completedOn: ISODate | null
   archived: boolean
   createdAt: string
 }
@@ -125,16 +131,21 @@ export interface GoalEntry {
 }
 
 export interface GoalProgress {
-  /** The most recent reading, or the start value if nothing is logged yet. */
-  current: number
-  /** Where a straight line from start to target would put you today. */
-  expected: number
-  /** 0..1 of the distance from start to target actually covered. */
+  /** The most recent reading, or the start value. Null for a milestone. */
+  current: number | null
+  /** Where a straight line from start to target would put you today. Null for a milestone. */
+  expected: number | null
+  /** 0..1 of the distance covered. A milestone is simply 0 or 1. */
   completion: number
+  /**
+   * Whether you are ahead of the reference line. Always true for a milestone: there is
+   * no line to be behind, and inventing one would nag about something undated.
+   */
   onPace: boolean
-  /** How much is still left to move, always zero or positive. */
-  remaining: number
-  direction: 'up' | 'down'
+  /** How much is still left to move. Null for a milestone. */
+  remaining: number | null
+  /** Null for a milestone, which moves in no direction. */
+  direction: 'up' | 'down' | null
 }
 
 /**

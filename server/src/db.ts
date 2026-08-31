@@ -122,9 +122,13 @@ export function toGoal(r: Row): Goal {
     id: str(r.id),
     challengeId: str(r.challenge_id),
     label: str(r.label),
+    kind: r.kind as Goal['kind'],
     unit: strOrNull(r.unit),
-    startValue: num(r.start_value),
-    targetValue: num(r.target_value),
+    startValue: numOrNull(r.start_value),
+    targetValue: numOrNull(r.target_value),
+    completedOn: r.completed_on === null || r.completed_on === undefined
+      ? null
+      : isoDate(r.completed_on),
     archived: Boolean(r.archived),
     createdAt: iso(r.created_at),
   }

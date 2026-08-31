@@ -15,16 +15,16 @@ function challenge(over: Partial<Challenge> = {}): Challenge {
 /** Lose 3kg: 80 down to 77 over 60 days. */
 function losing(over: Partial<Goal> = {}): Goal {
   return {
-    id: 'g1', challengeId: 'c1', label: 'Lose 3kg', unit: 'kg',
-    startValue: 80, targetValue: 77, archived: false, createdAt: '', ...over,
+    id: 'g1', challengeId: 'c1', label: 'Lose 3kg', kind: 'number', unit: 'kg',
+    startValue: 80, targetValue: 77, completedOn: null, archived: false, createdAt: '', ...over,
   }
 }
 
 /** Read 12 books: 0 up to 12. */
 function gaining(over: Partial<Goal> = {}): Goal {
   return {
-    id: 'g2', challengeId: 'c1', label: 'Read 12 books', unit: 'books',
-    startValue: 0, targetValue: 12, archived: false, createdAt: '', ...over,
+    id: 'g2', challengeId: 'c1', label: 'Read 12 books', kind: 'number', unit: 'books',
+    startValue: 0, targetValue: 12, completedOn: null, archived: false, createdAt: '', ...over,
   }
 }
 
@@ -140,5 +140,46 @@ describe('goalProgress', () => {
     expect(p.completion).toBe(1)
     expect(p.remaining).toBe(0)
     expect(p.onPace).toBe(true)
+  })
+})
+
+describe('milestone goals', () => {
+  const c = challenge({ startDate: '2026-09-01', lengthDays: 60 })
+
+  function milestone(over: Partial<Goal> = {}): Goal {
+    return {
+      id: 'm1', challengeId: 'c1', label: 'Ship to production', kind: 'milestone',
+      unit: null, startValue: null, targetValue: null, completedOn: null,
+      archived: false, createdAt: '', ...over,
+    }
+  }
+
+  it('is not complete until it is ticked', () => {
+    const p = goalProgress(milestone(), [], c, '2026-09-15')
+    expect(p.completion).toBe(0)
+  })
+
+  it('is complete once ticked', () => {
+    const p = goalProgress(milestone({ completedOn: '2026-09-15' }), [], c, '2026-09-20')
+    expect(p.completion).toBe(1)
+  })
+
+  it('does not show as complete before the day it was ticked', () => {
+    // Looking back at an earlier date should not show a future completion.
+    const p = goalProgress(milestone({ completedOn: '2026-09-20' }), [], c, '2026-09-15')
+    expect(p.completion).toBe(0)
+  })
+
+  it('never reports being behind pace', () => {
+    // There is no line to fall behind. Nagging about an undated outcome is noise.
+    expect(goalProgress(milestone(), [], c, '2026-10-25').onPace).toBe(true)
+  })
+
+  it('reports no numbers at all', () => {
+    const p = goalProgress(milestone(), [], c, '2026-09-15')
+    expect(p.current).toBeNull()
+    expect(p.expected).toBeNull()
+    expect(p.remaining).toBeNull()
+    expect(p.direction).toBeNull()
   })
 })

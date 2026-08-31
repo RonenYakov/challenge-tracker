@@ -8,12 +8,25 @@ import { activeDateFor } from '../days.js'
 
 const idParam = z.object({ id: z.string().uuid() })
 
-const goalFields = z.object({
+/**
+ * Two shapes of outcome. A numeric goal moves from a start to a target and is tracked
+ * by readings; a milestone is done or not done. Forcing "ship to production" into a
+ * start/target pair would be arithmetic pretending to be progress.
+ */
+const numberGoal = z.object({
+  kind: z.literal('number'),
   label: z.string().trim().min(1).max(200),
   unit: z.string().trim().max(20).nullable().default(null),
   startValue: z.number().finite(),
   targetValue: z.number().finite(),
 })
+
+const milestoneGoal = z.object({
+  kind: z.literal('milestone'),
+  label: z.string().trim().min(1).max(200),
+})
+
+const goalFields = z.discriminatedUnion('kind', [numberGoal, milestoneGoal])
 
 export async function goalRoutes(app: FastifyInstance) {
   /** Every goal on a challenge, each with its readings and current standing. */
@@ -64,18 +77,23 @@ export async function goalRoutes(app: FastifyInstance) {
 
     // A target identical to the start has nothing to track and would render as
     // permanently complete, which is confusing rather than useful.
-    if (body.startValue === body.targetValue) {
+    if (body.kind === 'number' && body.startValue === body.targetValue) {
       throw badRequest('The target has to differ from the starting value.')
     }
 
     const [row] = await sql`
-      insert into goals ${sql({
-        challenge_id: id,
-        label: body.label,
-        unit: body.unit,
-        start_value: body.startValue,
-        target_value: body.targetValue,
-      })}
+      insert into goals ${sql(
+        body.kind === 'number'
+          ? {
+              challenge_id: id,
+              kind: 'number',
+              label: body.label,
+              unit: body.unit,
+              start_value: body.startValue,
+              target_value: body.targetValue,
+            }
+          : { challenge_id: id, kind: 'milestone', label: body.label },
+      )}
       returning *
     `
     reply.code(201)
@@ -84,22 +102,29 @@ export async function goalRoutes(app: FastifyInstance) {
 
   app.patch('/api/goals/:id', async (request) => {
     const { id } = idParam.parse(request.params)
-    const body = goalFields.partial().parse(request.body)
-    const { goal } = await loadOwnedGoal(request.user.id, id)
+    const body = z.object({ label: z.string().trim().min(1).max(200) }).parse(request.body)
+    await loadOwnedGoal(request.user.id, id)
 
-    const start = body.startValue ?? goal.startValue
-    const target = body.targetValue ?? goal.targetValue
-    if (start === target) throw badRequest('The target has to differ from the starting value.')
+    // Only the label is editable. Moving a target mid-challenge would rewrite what
+    // "on pace" meant for every reading already logged against it.
+    const [row] = await sql`update goals set label = ${body.label} where id = ${id} returning *`
+    return { goal: toGoal(row!) }
+  })
 
-    const patch = {
-      ...(body.label !== undefined && { label: body.label }),
-      ...(body.unit !== undefined && { unit: body.unit }),
-      ...(body.startValue !== undefined && { start_value: body.startValue }),
-      ...(body.targetValue !== undefined && { target_value: body.targetValue }),
+  /** Ticking a milestone, and unticking it if it was premature. */
+  app.post('/api/goals/:id/complete', async (request) => {
+    const { id } = idParam.parse(request.params)
+    const { done } = z.object({ done: z.boolean() }).parse(request.body)
+    const { goal, challenge } = await loadOwnedGoal(request.user.id, id)
+
+    if (goal.kind !== 'milestone') {
+      throw badRequest('A numeric goal is finished by its readings, not by ticking it.')
     }
-    if (Object.keys(patch).length === 0) return { goal }
 
-    const [row] = await sql`update goals set ${sql(patch)} where id = ${id} returning *`
+    const [row] = await sql`
+      update goals set completed_on = ${done ? activeDateFor(challenge) : null}
+      where id = ${id} returning *
+    `
     return { goal: toGoal(row!) }
   })
 
@@ -126,6 +151,10 @@ export async function goalRoutes(app: FastifyInstance) {
       .parse(request.body)
 
     const { goal, challenge } = await loadOwnedGoal(request.user.id, id)
+    if (goal.kind !== 'number') {
+      throw badRequest('This goal is done or not done; there is no reading to log.')
+    }
+
     const today = activeDateFor(challenge)
     const loggedOn = body.loggedOn ?? today
 

@@ -165,12 +165,9 @@ export interface GoalWithProgress {
   daysRemaining: number
 }
 
-export interface NewGoal {
-  label: string
-  unit: string | null
-  startValue: number
-  targetValue: number
-}
+export type NewGoal =
+  | { kind: 'number'; label: string; unit: string | null; startValue: number; targetValue: number }
+  | { kind: 'milestone'; label: string }
 
 export interface NewEvent {
   title: string
@@ -236,6 +233,8 @@ export const api = {
   createGoal: (challengeId: string, body: NewGoal) =>
     post<{ goal: Goal }>(`/api/challenges/${challengeId}/goals`, body),
   deleteGoal: (goalId: string) => del(`/api/goals/${goalId}`),
+  completeGoal: (goalId: string, done: boolean) =>
+    post<{ goal: Goal }>(`/api/goals/${goalId}/complete`, { done }),
   logGoalReading: (goalId: string, value: number) =>
     put<{ goal: Goal; entries: GoalEntry[]; progress: GoalProgress }>(
       `/api/goals/${goalId}/entries`,
