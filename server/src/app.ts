@@ -10,6 +10,7 @@ import { todayRoutes } from './routes/today.js'
 import { goalRoutes } from './routes/goals.js'
 import { eventRoutes } from './routes/events.js'
 import { routineRoutes } from './routes/routine.js'
+import { calendarLinkRoutes, calendarRoutes } from './routes/calendar.js'
 
 export async function buildApp() {
   const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? 'info' } })
@@ -55,6 +56,10 @@ export async function buildApp() {
 
   app.get('/health', async () => ({ ok: true }))
 
+  // Public by necessity: a calendar client cannot present a bearer token, so the
+  // random token in the URL is the credential. Registered before the auth scope.
+  await app.register(calendarRoutes)
+
   // Everything below this line requires a verified token.
   await app.register(async (protectedRoutes) => {
     protectedRoutes.addHook('onRequest', authenticate)
@@ -67,6 +72,7 @@ export async function buildApp() {
     await protectedRoutes.register(goalRoutes)
     await protectedRoutes.register(eventRoutes)
     await protectedRoutes.register(routineRoutes)
+    await protectedRoutes.register(calendarLinkRoutes)
   })
 
   return app

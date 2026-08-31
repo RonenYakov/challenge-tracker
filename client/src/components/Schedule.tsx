@@ -228,3 +228,70 @@ function NewEventForm({
     </form>
   )
 }
+
+/**
+ * A subscribable feed URL for Google Calendar, Apple Calendar or Outlook.
+ *
+ * Subscribing beats pushing events with the Calendar API here: it needs no Google
+ * review, no stored refresh token, and it works with every calendar app rather than
+ * one. The trade-off is refresh lag, which Google measures in hours, so an edit made
+ * today may not appear until tomorrow. For a weekly gym slot that rarely matters.
+ */
+export function CalendarLink() {
+  const queryClient = useQueryClient()
+  const [copied, setCopied] = useState(false)
+  const { data, isPending } = useQuery({ queryKey: ['calendar-link'], queryFn: api.calendarLink })
+
+  const rotate = useMutation({
+    mutationFn: api.rotateCalendarLink,
+    onSuccess: () => {
+      setCopied(false)
+      void queryClient.invalidateQueries({ queryKey: ['calendar-link'] })
+    },
+  })
+
+  if (isPending || !data?.token) return null
+  const url = `${window.location.origin}/api/calendar/${data.token}.ics`
+
+  return (
+    <Card>
+      <p className="eyebrow mb-2">Subscribe in your calendar</p>
+      <p className="mb-3 text-[13px] text-ink-muted">
+        Add this address in Google Calendar under &ldquo;Other calendars &rarr; From URL&rdquo;,
+        and your schedule appears alongside everything else. Google refreshes subscribed
+        calendars slowly, often only once a day, so a change you make now may take a while
+        to show.
+      </p>
+
+      <div className="flex items-center gap-2">
+        <Input readOnly value={url} onFocus={(e) => e.currentTarget.select()} className="flex-1" />
+        <Button
+          variant="secondary"
+          onClick={() => {
+            void navigator.clipboard.writeText(url).then(() => setCopied(true))
+          }}
+        >
+          {copied ? 'Copied' : 'Copy'}
+        </Button>
+      </div>
+
+      <button
+        type="button"
+        disabled={rotate.isPending}
+        onClick={() => {
+          if (confirm('Create a new address? Any calendar already subscribed will stop updating.')) {
+            rotate.mutate()
+          }
+        }}
+        className="touch mt-3 text-[12px] text-ink-muted underline hover:text-ink"
+      >
+        Reset this address
+      </button>
+
+      <p className="mt-2 text-[12px] text-ink-muted">
+        Anyone with the address can read your schedule, so treat it like a password.
+        Resetting it revokes every existing subscription.
+      </p>
+    </Card>
+  )
+}

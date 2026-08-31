@@ -240,6 +240,9 @@ export const api = {
     post<{ event: ScheduledEvent }>(`/api/challenges/${challengeId}/events`, body),
   deleteEvent: (eventId: string) => del(`/api/events/${eventId}`),
 
+  calendarLink: () => get<{ token: string | null }>('/api/calendar-link'),
+  rotateCalendarLink: () => post<{ token: string }>('/api/calendar-link/rotate'),
+
   routine: () => get<{ routine: RoutineProfile | null }>('/api/routine'),
   saveRoutine: (body: Omit<RoutineProfile, 'updatedAt'>) =>
     put<{ routine: RoutineProfile }>('/api/routine', body),
