@@ -23,6 +23,13 @@ export interface Challenge {
   /** IANA zone, e.g. 'Asia/Jerusalem'. Every date boundary is resolved in this zone. */
   timezone: string
   graceTokensTotal: number
+  /**
+   * Weekdays with nothing due, 0 = Sunday through 6 = Saturday. `[6]` is Shabbat.
+   * A rest day is never required, never breaks a streak, and cannot be logged, so
+   * `lengthDays` counts days of actual work: sixty days with Saturdays off runs about
+   * seventy calendar days and is still sixty real days.
+   */
+  restWeekdays: number[]
   attemptNo: number
   status: ChallengeStatus
   createdAt: string

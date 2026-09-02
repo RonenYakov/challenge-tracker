@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
+import { weekdayOf } from './challenge-logic.js'
 import {
-  weekdayOf,
   occursOn,
   occurrencesBetween,
   minutesBetweenTimes,

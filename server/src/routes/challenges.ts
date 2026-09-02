@@ -4,7 +4,13 @@ import { sql, toChallenge, toChallengeEvent, toDayLog } from '../db.js'
 import { loadOwnedChallenge } from '../ownership.js'
 import { badRequest, conflict } from '../errors.js'
 import { activeDateFor } from '../days.js'
-import { dayNumber, findUnresolvedMiss, graceTokensRemaining } from '@ct/shared'
+import {
+  activeDaysElapsed,
+  findUnresolvedMiss,
+  firstActiveOnOrAfter,
+  graceTokensRemaining,
+  isRestDay,
+} from '@ct/shared'
 
 const createBody = z.object({
   name: z.string().trim().min(1).max(120),
@@ -13,6 +19,12 @@ const createBody = z.object({
   dayCutoffHour: z.number().int().min(0).max(23).default(4),
   timezone: z.string().min(1).default('Asia/Jerusalem'),
   graceTokensTotal: z.number().int().min(0).max(365).default(0),
+  // 0 = Sunday through 6 = Saturday. Six at most: seven would leave no days at all.
+  restWeekdays: z
+    .array(z.number().int().min(0).max(6))
+    .max(6)
+    .transform((days) => [...new Set(days)].sort((a, b) => a - b))
+    .default([]),
 })
 
 const updateBody = createBody.partial()
@@ -39,6 +51,7 @@ export async function challengeRoutes(app: FastifyInstance) {
   app.post('/api/challenges', async (request, reply) => {
     const body = createBody.parse(request.body)
     assertKnownTimezone(body.timezone)
+    assertStartIsActive(body.startDate, body.restWeekdays)
 
     const [row] = await sql`
       insert into challenges ${sql({
@@ -49,6 +62,7 @@ export async function challengeRoutes(app: FastifyInstance) {
         day_cutoff_hour: body.dayCutoffHour,
         timezone: body.timezone,
         grace_tokens_total: body.graceTokensTotal,
+        rest_weekdays: body.restWeekdays,
         status: 'draft',
       })}
       returning *
@@ -64,10 +78,21 @@ export async function challengeRoutes(app: FastifyInstance) {
 
     if (body.timezone) assertKnownTimezone(body.timezone)
 
-    // Moving the goalposts mid-run would silently rewrite every day number already logged.
-    if (existing.status === 'active' && (body.startDate || body.lengthDays)) {
-      throw badRequest('Start date and length cannot be changed while a challenge is running.')
+    // Moving the goalposts mid-run would silently rewrite every day number already
+    // logged. Rest days belong in that list too: setting Saturdays aside halfway would
+    // drop every completed Saturday out of the streak and slide the finish line.
+    if (existing.status === 'active' && (body.startDate || body.lengthDays || body.restWeekdays)) {
+      throw badRequest(
+        'אי אפשר לשנות תאריך התחלה, אורך או ימי מנוחה בזמן שהאתגר רץ.',
+      )
     }
+
+    // Validate against the merged result: a patch that only moves the start date still
+    // has to agree with the rest days already stored, and the other way round.
+    assertStartIsActive(
+      body.startDate ?? existing.startDate,
+      body.restWeekdays ?? existing.restWeekdays,
+    )
 
     const patch = {
       ...(body.name !== undefined && { name: body.name }),
@@ -76,6 +101,7 @@ export async function challengeRoutes(app: FastifyInstance) {
       ...(body.dayCutoffHour !== undefined && { day_cutoff_hour: body.dayCutoffHour }),
       ...(body.timezone !== undefined && { timezone: body.timezone }),
       ...(body.graceTokensTotal !== undefined && { grace_tokens_total: body.graceTokensTotal }),
+      ...(body.restWeekdays !== undefined && { rest_weekdays: body.restWeekdays }),
     }
     if (Object.keys(patch).length === 0) return { challenge: existing }
 
@@ -95,8 +121,11 @@ export async function challengeRoutes(app: FastifyInstance) {
       where challenge_id = ${id} and is_active = true
     `
     if (Number(taskCount[0]?.count ?? 0) === 0) {
-      throw badRequest('Add at least one task before starting a challenge.')
+      throw badRequest('צריך להוסיף לפחות כלל אחד לפני שמתחילים אתגר.')
     }
+    // Rest days could have been changed after the start date was picked, while the
+    // challenge was still a draft, so this is the last chance to catch a clash.
+    assertStartIsActive(challenge.startDate, challenge.restWeekdays)
 
     // Stand down the current challenge and raise this one atomically, so the partial
     // unique index can never see two active rows mid-flight.
@@ -131,11 +160,11 @@ export async function challengeRoutes(app: FastifyInstance) {
     const dayRows = await sql`select * from day_logs where challenge_id = ${id}`
     const eventRows = await sql`select * from challenge_events where challenge_id = ${id}`
     const miss = findUnresolvedMiss(dayRows.map(toDayLog), challenge, new Date())
-    if (!miss) throw conflict('There is nothing to resolve.')
+    if (!miss) throw conflict('אין שום דבר לפתור.')
 
     if (action === 'grace') {
       const remaining = graceTokensRemaining(challenge, eventRows.map(toChallengeEvent))
-      if (remaining <= 0) throw conflict('No grace tokens left.')
+      if (remaining <= 0) throw conflict('לא נותרו אסימוני חסד.')
 
       await sql.begin(async (tx) => {
         await tx`
@@ -150,6 +179,9 @@ export async function challengeRoutes(app: FastifyInstance) {
       })
     } else {
       const today = activeDateFor(challenge)
+      // Day 1 has to be a day with something due. Resetting on a Saturday would
+      // otherwise create an attempt whose first day can never be logged.
+      const newStart = firstActiveOnOrAfter(today, challenge.restWeekdays)
       await sql.begin(async (tx) => {
         await tx`
           insert into day_logs (challenge_id, log_date, day_number, attempt_no, status)
@@ -164,16 +196,17 @@ export async function challengeRoutes(app: FastifyInstance) {
         // run that failed. Deleting it would be tidier and less honest.
         await tx`
           update challenges
-          set start_date = ${today}, attempt_no = attempt_no + 1
+          set start_date = ${newStart}, attempt_no = attempt_no + 1
           where id = ${id}
         `
-        // Today becomes day 1 of the new attempt. If a row for today already exists
-        // from the run that just ended, re-stamp it rather than leaving it orphaned
-        // under the old attempt, where it would not count toward the new streak.
+        // The new start becomes day 1. If a row for it already exists from the run that
+        // just ended, re-stamp it rather than leaving it orphaned under the old attempt,
+        // where it would not count toward the new streak. When the reset lands on a rest
+        // day there is no such row and day 1 simply waits until tomorrow.
         await tx`
           update day_logs
           set attempt_no = ${challenge.attemptNo + 1}, day_number = 1
-          where challenge_id = ${id} and log_date = ${today}
+          where challenge_id = ${id} and log_date = ${newStart}
         `
       })
     }
@@ -228,7 +261,12 @@ export async function challengeRoutes(app: FastifyInstance) {
     return {
       graceTokensRemaining: graceTokensRemaining(challenge, eventRows.map(toChallengeEvent)),
       graceTokensTotal: challenge.graceTokensTotal,
-      currentDayNumber: dayNumber(activeDateFor(challenge), challenge.startDate),
+      currentDayNumber: activeDaysElapsed(
+        activeDateFor(challenge),
+        challenge.startDate,
+        challenge.restWeekdays,
+        challenge.lengthDays,
+      ),
       taskRates: perTask.map((r) => ({
         taskId: String(r.id),
         label: String(r.label),
@@ -247,6 +285,19 @@ function assertKnownTimezone(timezone: string): void {
   try {
     new Intl.DateTimeFormat('en-CA', { timeZone: timezone })
   } catch {
-    throw badRequest(`Unknown timezone: ${timezone}`)
+    throw badRequest(`אזור זמן לא מוכר: ${timezone}`)
   }
+}
+
+/**
+ * Day 1 has to be a day with something due on it.
+ *
+ * Snapping the date forward on the user's behalf would be the friendlier-looking
+ * option and the worse one: a start date that quietly moved is indistinguishable
+ * from a bug. Name the date that works instead and let them choose it.
+ */
+function assertStartIsActive(startDate: string, restWeekdays: number[]): void {
+  if (!isRestDay(startDate, restWeekdays)) return
+  const next = firstActiveOnOrAfter(startDate, restWeekdays)
+  throw badRequest(`אתגר לא יכול להתחיל ביום מנוחה. התאריך הראשון שמתאים הוא ${next}.`)
 }

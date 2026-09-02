@@ -1,4 +1,4 @@
-import { dayNumber } from './challenge-logic.js'
+import { activeDaysElapsed } from './rest-logic.js'
 import type { Challenge, Goal, GoalEntry, GoalProgress, ISODate } from './types.js'
 
 const clamp01 = (n: number) => Math.max(0, Math.min(1, n))
@@ -7,7 +7,9 @@ const clamp01 = (n: number) => Math.max(0, Math.min(1, n))
 function elapsedFraction(challenge: Challenge, date: ISODate): number {
   // A one-day challenge has no span to interpolate across; it is simply due.
   if (challenge.lengthDays <= 1) return 1
-  const day = dayNumber(date, challenge.startDate)
+  // Active days, not calendar days: otherwise the reference line marches on every rest
+  // day and reports you behind pace for a week in which you missed nothing.
+  const day = activeDaysElapsed(date, challenge.startDate, challenge.restWeekdays)
   return clamp01((day - 1) / (challenge.lengthDays - 1))
 }
 

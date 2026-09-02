@@ -3,9 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { endTimeOf, formatDuration, minutesBetweenTimes } from '@ct/shared'
 import { api, type NewEvent } from '../lib/api'
 import { Button, Card, Field, Input, Skeleton } from './ui'
-
 /** 0 = Sunday, matching the server and Date#getUTCDay. */
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+import { WEEKDAY_LABELS as DAYS, WeekdayPicker } from './WeekdayPicker'
 
 /**
  * Weekly recurring events: gym on Mon/Wed/Fri, a call on Sunday. Deliberately not
@@ -49,7 +48,7 @@ export function Schedule({ challengeId, manage }: { challengeId: string; manage?
             onClick={() => setAdding(true)}
             className="touch text-[12px] text-ink-muted underline hover:text-ink"
           >
-            Add
+            הוספה
           </button>
         )}
       </div>
@@ -63,14 +62,14 @@ export function Schedule({ challengeId, manage }: { challengeId: string; manage?
               </span>
               <span
                 className="truncate text-[14px]"
-                style={{ unicodeBidi: 'plaintext', textAlign: 'left' }}
+                style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}
               >
                 {o.event.title}
               </span>
             </li>
           ))}
           {upcoming.length === 0 && (
-            <li className="text-[13px] text-ink-muted">Nothing scheduled in the next two weeks.</li>
+            <li className="text-[13px] text-ink-muted">אין שום דבר מתוכנן בשבועיים הקרובים.</li>
           )}
         </ul>
       )}
@@ -85,15 +84,19 @@ export function Schedule({ challengeId, manage }: { challengeId: string; manage?
               <div className="min-w-0 flex-1">
                 <p
                   className="truncate text-[15px]"
-                  style={{ unicodeBidi: 'plaintext', textAlign: 'left' }}
+                  style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}
                 >
                   {event.title}
                 </p>
                 <p className="tnum mt-0.5 font-mono text-[11px] text-ink-muted">
-                  {event.weekdays.map((d) => DAYS[d]).join(' ')} · {event.timeOfDay}
-                  {'–'}
-                  {endTimeOf(event.timeOfDay, event.durationMinutes)} ·{' '}
-                  {formatDuration(event.durationMinutes)}
+                  {event.weekdays.map((d) => DAYS[d]).join(' ')} ·{' '}
+                  {/* Isolated, or the range lays out as "18:30–17:30". */}
+                  <span dir="ltr">
+                    {event.timeOfDay}
+                    {'–'}
+                    {endTimeOf(event.timeOfDay, event.durationMinutes)}
+                  </span>{' '}
+                  · {formatDuration(event.durationMinutes)}
                 </p>
               </div>
               <Button
@@ -102,14 +105,14 @@ export function Schedule({ challengeId, manage }: { challengeId: string; manage?
                 disabled={remove.isPending}
                 onClick={() => remove.mutate(event.id)}
               >
-                Remove
+                הסרה
               </Button>
             </li>
           ))}
           {events.length === 0 && !adding && (
             <li className="text-[13px] text-ink-muted">
-              Nothing scheduled. These are the things that support the challenge without
-              being scored by it, like a gym session or a weekly call.
+              אין שום דבר מתוכנן. אלה הדברים שתומכים באתגר בלי להיות חלק מהניקוד שלו,
+              כמו אימון בחדר כושר או שיחה שבועית.
             </li>
           )}
         </ul>
@@ -147,10 +150,6 @@ function NewEventForm({
   // not a number anyone should be asked to work out.
   const durationMinutes = minutesBetweenTimes(timeOfDay, endTime)
 
-  const toggle = (day: number) =>
-    setWeekdays((current) =>
-      current.includes(day) ? current.filter((d) => d !== day) : [...current, day],
-    )
 
   return (
     <form
@@ -160,42 +159,22 @@ function NewEventForm({
         onSubmit({ title: title.trim(), weekdays, timeOfDay, durationMinutes })
       }}
     >
-      <Field label="Event">
+      <Field label="אירוע">
         <Input
           dir="auto"
           required
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Gym"
+          placeholder="חדר כושר"
         />
       </Field>
 
       <div className="mt-3">
-        <span className="mb-1.5 block text-[13px] font-medium text-ink-soft">Days</span>
-        <div className="flex flex-wrap gap-1.5">
-          {DAYS.map((label, day) => {
-            const on = weekdays.includes(day)
-            return (
-              <button
-                key={day}
-                type="button"
-                onClick={() => toggle(day)}
-                className="press touch min-w-11 rounded-lg border px-2.5 py-2 text-[13px] sm:py-1"
-                style={{
-                  borderColor: on ? 'var(--color-orange)' : 'var(--color-mist)',
-                  color: on ? 'var(--color-orange)' : 'var(--color-ink-muted)',
-                  backgroundColor: on ? 'hsl(18 66% 50% / 0.07)' : 'transparent',
-                }}
-              >
-                {label}
-              </button>
-            )
-          })}
-        </div>
+        <WeekdayPicker label="ימים" selected={weekdays} onChange={setWeekdays} />
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-3">
-        <Field label="Starts">
+        <Field label="מתחיל">
           <Input
             type="time"
             required
@@ -203,7 +182,7 @@ function NewEventForm({
             onChange={(e) => setTimeOfDay(e.target.value)}
           />
         </Field>
-        <Field label="Ends">
+        <Field label="מסתיים">
           <Input
             type="time"
             required
@@ -215,7 +194,7 @@ function NewEventForm({
 
       <p className="tnum mt-1.5 font-mono text-[12px] text-ink-muted">
         {formatDuration(durationMinutes)}
-        {endTime <= timeOfDay && ' · ends the next day'}
+        {endTime <= timeOfDay && ' · מסתיים למחרת'}
       </p>
 
       {error && (
@@ -226,14 +205,14 @@ function NewEventForm({
 
       <div className="mt-3 flex gap-2">
         <Button type="submit" variant="secondary" loading={pending} disabled={weekdays.length === 0}>
-          {pending ? 'Saving…' : 'Add event'}
+          {pending ? 'שומר…' : 'הוספת אירוע'}
         </Button>
         <Button type="button" variant="ghost" onClick={onCancel}>
-          Cancel
+          ביטול
         </Button>
       </div>
       {weekdays.length === 0 && (
-        <p className="mt-2 text-[12px] text-ink-muted">Pick at least one day.</p>
+        <p className="mt-2 text-[12px] text-ink-muted">צריך לבחור לפחות יום אחד.</p>
       )}
     </form>
   )
@@ -267,10 +246,9 @@ export function CalendarLink() {
     <Card>
       <p className="eyebrow mb-2">Subscribe in your calendar</p>
       <p className="mb-3 text-[13px] text-ink-muted">
-        Add this address in Google Calendar under &ldquo;Other calendars &rarr; From URL&rdquo;,
-        and your schedule appears alongside everything else. Google refreshes subscribed
-        calendars slowly, often only once a day, so a change you make now may take a while
-        to show.
+        הוסף את הכתובת הזאת ביומן גוגל תחת &ldquo;יומנים אחרים &larr; מכתובת URL&rdquo;,
+        והלוח שלך יופיע לצד כל השאר. גוגל מרענן יומנים מנויים לאט, לפעמים רק פעם ביום,
+        אז שינוי שתעשה עכשיו יכול לקחת זמן עד שיופיע.
       </p>
 
       <div className="flex items-center gap-2">
@@ -281,7 +259,7 @@ export function CalendarLink() {
             void navigator.clipboard.writeText(url).then(() => setCopied(true))
           }}
         >
-          {copied ? 'Copied' : 'Copy'}
+          {copied ? 'הועתק' : 'העתקה'}
         </Button>
       </div>
 
@@ -289,18 +267,18 @@ export function CalendarLink() {
         type="button"
         disabled={rotate.isPending}
         onClick={() => {
-          if (confirm('Create a new address? Any calendar already subscribed will stop updating.')) {
+          if (confirm('ליצור כתובת חדשה? כל יומן שכבר מנוי יפסיק להתעדכן.')) {
             rotate.mutate()
           }
         }}
         className="touch mt-3 text-[12px] text-ink-muted underline hover:text-ink"
       >
-        Reset this address
+        איפוס הכתובת
       </button>
 
       <p className="mt-2 text-[12px] text-ink-muted">
-        Anyone with the address can read your schedule, so treat it like a password.
-        Resetting it revokes every existing subscription.
+        כל מי שיש לו את הכתובת יכול לקרוא את הלוח שלך, אז תתייחס אליה כמו לסיסמה.
+        איפוס מבטל כל מנוי קיים.
       </p>
     </Card>
   )

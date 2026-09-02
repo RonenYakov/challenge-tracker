@@ -6,11 +6,13 @@ import { api, type NewTask } from '../lib/api'
 import { Button, Card, Field, Input, Skeleton } from '../components/ui'
 import { CalendarLink, Schedule } from '../components/Schedule'
 import { Routine } from '../components/Routine'
+import { SHABBAT_PRESET, WeekdayPicker } from '../components/WeekdayPicker'
+import { formatDateShort } from '../lib/format'
 
 const KIND_LABEL: Record<TaskKind, string> = {
-  check: 'Done / not done',
-  count: 'Count to a target',
-  timer: 'Timed',
+  check: 'בוצע / לא בוצע',
+  count: 'ספירה עד יעד',
+  timer: 'מתוזמן',
 }
 
 export function ChallengeEditor() {
@@ -33,6 +35,10 @@ export function ChallengeEditor() {
 
   const addTask = useMutation({ mutationFn: (body: NewTask) => api.createTask(id, body), onSuccess: refresh })
   const removeTask = useMutation({ mutationFn: api.deleteTask, onSuccess: refresh })
+  const setRestWeekdays = useMutation({
+    mutationFn: (restWeekdays: number[]) => api.updateChallenge(id, { restWeekdays }),
+    onSuccess: refresh,
+  })
   const renameTask = useMutation({
     mutationFn: ({ id: taskId, label }: { id: string; label: string }) =>
       api.updateTask(taskId, { label }),
@@ -56,7 +62,7 @@ export function ChallengeEditor() {
   if (challenge.isPending || tasks.isPending) {
     return <Skeleton className="h-64 w-full rounded-2xl" />
   }
-  if (!challenge.data) return <p className="text-sm text-ink-muted">Challenge not found.</p>
+  if (!challenge.data) return <p className="text-sm text-ink-muted">האתגר לא נמצא.</p>
 
   const c = challenge.data
   const activeTasks = (tasks.data?.tasks ?? []).filter((t) => t.isActive)
@@ -69,11 +75,31 @@ export function ChallengeEditor() {
         {c.name}
       </h1>
       <p className="tnum mt-1 font-mono text-[12px] text-ink-muted">
-        {c.lengthDays} days · from {c.startDate} · day ends {String(c.dayCutoffHour).padStart(2, '0')}:00 ·{' '}
-        {c.graceTokensTotal} grace · {c.timezone}
+        {c.lengthDays} ימים · מ-{formatDateShort(c.startDate)} · היום נגמר ב-{String(c.dayCutoffHour).padStart(2, '0')}:00 ·{' '}
+        {c.graceTokensTotal} חסד · {c.timezone}
       </p>
 
       <Card className="mt-5">
+        <WeekdayPicker
+          label="ימי מנוחה (לא חובה)"
+          hint={
+            isRunning
+              ? 'נעול בזמן שהאתגר רץ. שינוי עכשיו יוציא מהרצף ימים שכבר סיימת ויזיז את קו הסיום.'
+              : 'לרוב אין צורך בזה. אם אתה שומר שבת, או שיש יום קבוע שבו אתה לא מתאמן, סמן אותו כאן: לא נדרש בו כלום, הוא לא נחשב החמצה, והרצף ממשיך מעליו. האורך נספר בימי עבודה, אז 60 יום עם שבתות פנויות נמשכים בערך 70 יום בלוח השנה.'
+          }
+          disabled={isRunning || setRestWeekdays.isPending}
+          selected={c.restWeekdays}
+          onChange={(days) => setRestWeekdays.mutate(days)}
+          presets={[SHABBAT_PRESET]}
+        />
+        {setRestWeekdays.error && (
+          <p className="shake mt-3 text-sm" style={{ color: 'var(--color-clay)' }}>
+            {(setRestWeekdays.error as Error).message}
+          </p>
+        )}
+      </Card>
+
+      <Card className="mt-4">
         <div className="mb-3 flex items-center justify-between">
           <p className="eyebrow">The rules</p>
           <p className="tnum font-mono text-[12px] text-ink-muted">{activeTasks.length}</p>
@@ -93,13 +119,13 @@ export function ChallengeEditor() {
         </ul>
 
         {activeTasks.length === 0 && (
-          <p className="text-sm text-ink-muted">No rules yet. Add the first one below.</p>
+          <p className="text-sm text-ink-muted">עוד אין כללים. הוסף את הראשון למטה.</p>
         )}
 
         {activeTasks.length > 0 && (
           <p className="mt-3 text-[12px] text-ink-muted">
-            Tap a rule to rename it. Targets stay locked while the challenge runs, because
-            changing one would re-score the days you have already finished.
+            לחיצה על כלל משנה את השם שלו. היעדים נעולים בזמן שהאתגר רץ, כי שינוי שלהם
+            ינקד מחדש ימים שכבר סיימת.
           </p>
         )}
 
@@ -124,21 +150,21 @@ export function ChallengeEditor() {
             disabled={activeTasks.length === 0 || activate.isPending}
             onClick={() => activate.mutate()}
           >
-            Start this challenge
+            התחלת האתגר
           </Button>
         )}
         <Button variant="ghost" onClick={() => navigate('/challenges')}>
-          Back
+          חזרה
         </Button>
         <Button
           variant="danger"
-          className="ml-auto"
+          className="ms-auto"
           disabled={remove.isPending}
           onClick={() => {
-            if (confirm('Delete this challenge and everything logged against it?')) remove.mutate()
+            if (confirm('למחוק את האתגר הזה ואת כל מה שתועד בו?')) remove.mutate()
           }}
         >
-          Delete
+          מחיקה
         </Button>
       </div>
 
@@ -196,8 +222,8 @@ function TaskLine({
           <button
             type="button"
             onClick={() => setEditing(true)}
-            title="Rename"
-            className="block w-full truncate text-left text-[15px] hover:text-ink-soft"
+            title="שינוי שם"
+            className="block w-full truncate text-start text-[15px] hover:text-ink-soft"
             style={{ unicodeBidi: 'plaintext' }}
           >
             {task.label}
@@ -207,7 +233,7 @@ function TaskLine({
           {task.kind === 'check'
             ? KIND_LABEL.check
             : `${task.targetValue} ${task.unit ?? ''} · ${KIND_LABEL[task.kind]}`}
-          {isRunning && task.kind !== 'check' && ' · locked while running'}
+          {isRunning && task.kind !== 'check' && ' · נעול בזמן ריצה'}
         </p>
         {task.cue && (
           <p className="mt-0.5 text-[11px] text-ink-muted" style={{ unicodeBidi: 'plaintext' }}>
@@ -216,7 +242,7 @@ function TaskLine({
         )}
       </div>
       <Button variant="ghost" disabled={removing} onClick={onRemove} className="px-2 text-[12px]">
-        Remove
+        הסרה
       </Button>
     </li>
   )
@@ -268,13 +294,13 @@ function AddTaskForm({
         setKind('check')
       }}
     >
-      <Field label="Add a rule">
+      <Field label="הוספת כלל">
         <Input
           dir="auto"
           required
           value={label}
           onChange={(e) => setLabel(e.target.value)}
-          placeholder="Read 10 pages"
+          placeholder="לקרוא 10 עמודים"
         />
       </Field>
 
@@ -298,7 +324,7 @@ function AddTaskForm({
 
       {needsTarget && (
         <div className="mt-3 grid grid-cols-2 gap-3">
-          <Field label="Target">
+          <Field label="יעד">
             <Input
               type="number"
               min={0.1}
@@ -309,11 +335,11 @@ function AddTaskForm({
               placeholder={kind === 'timer' ? '45' : '3'}
             />
           </Field>
-          <Field label="Unit">
+          <Field label="יחידה">
             <Input
               value={unit}
               onChange={(e) => setUnit(e.target.value)}
-              placeholder={kind === 'timer' ? 'min' : 'L'}
+              placeholder={kind === 'timer' ? 'דק׳' : 'ליטר'}
             />
           </Field>
         </div>
@@ -321,14 +347,14 @@ function AddTaskForm({
 
       <div className="mt-3">
         <Field
-          label="When and where (optional)"
-          hint="Naming the moment is one of the few habit tricks with real evidence behind it. Pick a cue you already hit every day."
+          label="מתי ואיפה (לא חובה)"
+          hint="לנקוב ברגע המדויק זה אחד מהטריקים הבודדים לבניית הרגלים שיש מאחוריו ראיות אמיתיות. תבחר רמז שאתה כבר עובר בו כל יום."
         >
           <Input
             dir="auto"
             value={cue}
             onChange={(e) => setCue(e.target.value)}
-            placeholder="After I brush my teeth"
+            placeholder="אחרי שאני מצחצח שיניים"
           />
         </Field>
       </div>
@@ -340,7 +366,7 @@ function AddTaskForm({
       )}
 
       <Button type="submit" className="mt-3" loading={pending}>
-        Add rule
+        הוספת כלל
       </Button>
     </form>
   )

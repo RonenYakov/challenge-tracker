@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   resolveActiveDate,
-  dayNumber,
+  calendarDaysBetween,
   addDays,
   dayCompletion,
   findUnresolvedMiss,
@@ -24,6 +24,7 @@ function challenge(over: Partial<Challenge> = {}): Challenge {
     dayCutoffHour: 4,
     timezone: TZ,
     graceTokensTotal: 3,
+    restWeekdays: [],
     attemptNo: 1,
     status: 'active',
     createdAt: '2026-08-01T00:00:00Z',
@@ -98,23 +99,23 @@ describe('resolveActiveDate', () => {
   })
 })
 
-describe('dayNumber and addDays', () => {
+describe('calendarDaysBetween and addDays', () => {
   it('counts the start date as day 1', () => {
-    expect(dayNumber('2026-08-01', '2026-08-01')).toBe(1)
-    expect(dayNumber('2026-08-02', '2026-08-01')).toBe(2)
-    expect(dayNumber('2026-09-29', '2026-08-01')).toBe(60)
+    expect(calendarDaysBetween('2026-08-01', '2026-08-01')).toBe(0)
+    expect(calendarDaysBetween('2026-08-01', '2026-08-02')).toBe(1)
+    expect(calendarDaysBetween('2026-08-01', '2026-09-29')).toBe(59)
   })
 
   it('crosses a month boundary without drifting', () => {
-    expect(dayNumber('2026-11-01', '2026-10-31')).toBe(2)
+    expect(calendarDaysBetween('2026-10-31', '2026-11-01')).toBe(1)
   })
 
   it('crosses a DST change without drifting', () => {
-    expect(dayNumber('2026-10-26', '2026-10-24')).toBe(3)
+    expect(calendarDaysBetween('2026-10-24', '2026-10-26')).toBe(2)
   })
 
   it('goes negative-ish for dates before the start', () => {
-    expect(dayNumber('2026-07-31', '2026-08-01')).toBe(0)
+    expect(calendarDaysBetween('2026-08-01', '2026-07-31')).toBe(-1)
   })
 
   it('addDays is the inverse and handles leap years', () => {
@@ -248,7 +249,7 @@ describe('findUnresolvedMiss', () => {
 
 describe('computeStreak', () => {
   it('is zero with no logs', () => {
-    expect(computeStreak([])).toEqual({ current: 0, best: 0 })
+    expect(computeStreak([], [])).toEqual({ current: 0, best: 0 })
   })
 
   it('counts consecutive complete days', () => {
@@ -257,7 +258,7 @@ describe('computeStreak', () => {
       log('2026-08-02', 'complete', 2),
       log('2026-08-03', 'complete', 3),
     ]
-    expect(computeStreak(logs)).toEqual({ current: 3, best: 3 })
+    expect(computeStreak(logs, [])).toEqual({ current: 3, best: 3 })
   })
 
   it('counts a graced day as unbroken', () => {
@@ -266,7 +267,7 @@ describe('computeStreak', () => {
       log('2026-08-02', 'graced', 2),
       log('2026-08-03', 'complete', 3),
     ]
-    expect(computeStreak(logs)).toEqual({ current: 3, best: 3 })
+    expect(computeStreak(logs, [])).toEqual({ current: 3, best: 3 })
   })
 
   it('breaks on an incomplete day but remembers the best run', () => {
@@ -277,7 +278,7 @@ describe('computeStreak', () => {
       log('2026-08-04', 'incomplete', 4),
       log('2026-08-05', 'complete', 5),
     ]
-    expect(computeStreak(logs)).toEqual({ current: 1, best: 3 })
+    expect(computeStreak(logs, [])).toEqual({ current: 1, best: 3 })
   })
 
   it('does not let a still-pending today reset the current streak', () => {
@@ -286,7 +287,7 @@ describe('computeStreak', () => {
       log('2026-08-02', 'complete', 2),
       log('2026-08-03', 'pending', 3),
     ]
-    expect(computeStreak(logs)).toEqual({ current: 2, best: 2 })
+    expect(computeStreak(logs, [])).toEqual({ current: 2, best: 2 })
   })
 
   it('sorts by date rather than trusting input order', () => {
@@ -295,7 +296,7 @@ describe('computeStreak', () => {
       log('2026-08-01', 'complete', 1),
       log('2026-08-02', 'complete', 2),
     ]
-    expect(computeStreak(logs)).toEqual({ current: 3, best: 3 })
+    expect(computeStreak(logs, [])).toEqual({ current: 3, best: 3 })
   })
 
   it('treats a gap in the dates as a break, even with no incomplete row', () => {
@@ -304,7 +305,7 @@ describe('computeStreak', () => {
       log('2026-08-02', 'complete', 2),
       log('2026-08-09', 'complete', 9),
     ]
-    expect(computeStreak(logs)).toEqual({ current: 1, best: 2 })
+    expect(computeStreak(logs, [])).toEqual({ current: 1, best: 2 })
   })
 })
 
@@ -312,26 +313,26 @@ describe('canBackfill', () => {
   const now = new Date('2026-08-20T11:00:00Z') // Aug 20, 14:00 Jerusalem
 
   it('allows yesterday', () => {
-    expect(canBackfill('2026-08-19', now, 4, TZ)).toBe(true)
+    expect(canBackfill('2026-08-19', now, { dayCutoffHour: 4, timezone: TZ, restWeekdays: [] })).toBe(true)
   })
 
   it('rejects today, which is edited normally rather than backfilled', () => {
-    expect(canBackfill('2026-08-20', now, 4, TZ)).toBe(false)
+    expect(canBackfill('2026-08-20', now, { dayCutoffHour: 4, timezone: TZ, restWeekdays: [] })).toBe(false)
   })
 
   it('rejects two days ago', () => {
-    expect(canBackfill('2026-08-18', now, 4, TZ)).toBe(false)
+    expect(canBackfill('2026-08-18', now, { dayCutoffHour: 4, timezone: TZ, restWeekdays: [] })).toBe(false)
   })
 
   it('rejects the future', () => {
-    expect(canBackfill('2026-08-21', now, 4, TZ)).toBe(false)
+    expect(canBackfill('2026-08-21', now, { dayCutoffHour: 4, timezone: TZ, restWeekdays: [] })).toBe(false)
   })
 
   it('respects the cutoff at 01:00', () => {
     // 01:00 Aug 21 Jerusalem means the logical today is still Aug 20
     const lateNight = new Date('2026-08-20T22:00:00Z')
-    expect(canBackfill('2026-08-19', lateNight, 4, TZ)).toBe(true)
-    expect(canBackfill('2026-08-20', lateNight, 4, TZ)).toBe(false)
+    expect(canBackfill('2026-08-19', lateNight, { dayCutoffHour: 4, timezone: TZ, restWeekdays: [] })).toBe(true)
+    expect(canBackfill('2026-08-20', lateNight, { dayCutoffHour: 4, timezone: TZ, restWeekdays: [] })).toBe(false)
   })
 })
 
@@ -392,7 +393,7 @@ describe('bestStreakEver', () => {
   })
 
   it('is zero with no logs', () => {
-    expect(bestStreakEver([])).toBe(0)
+    expect(bestStreakEver([], [])).toBe(0)
   })
 
   it('matches the best of a single attempt', () => {
@@ -401,7 +402,7 @@ describe('bestStreakEver', () => {
       log('2026-08-02', 'complete', 1),
       log('2026-08-03', 'complete', 1),
     ]
-    expect(bestStreakEver(logs)).toBe(3)
+    expect(bestStreakEver(logs, [])).toBe(3)
   })
 
   it('remembers a long run from an abandoned attempt', () => {
@@ -415,7 +416,7 @@ describe('bestStreakEver', () => {
       log('2026-08-06', 'complete', 2),
       log('2026-08-07', 'complete', 2),
     ]
-    expect(bestStreakEver(logs)).toBe(4)
+    expect(bestStreakEver(logs, [])).toBe(4)
   })
 
   it('does not let a run span a reset, even on consecutive dates', () => {
@@ -426,6 +427,81 @@ describe('bestStreakEver', () => {
       log('2026-08-04', 'complete', 2),
     ]
     // Two runs of two, not one run of four.
-    expect(bestStreakEver(logs)).toBe(2)
+    expect(bestStreakEver(logs, [])).toBe(2)
+  })
+})
+
+/**
+ * Rest days: the whole civil Saturday is off, so nothing is due, nothing is missed,
+ * and the run carries across it. Reference week below is Fri 2026-08-07, Sat the 8th,
+ * Sun the 9th, Mon the 10th, Tue the 11th. Start dates are Sunday 2026-08-02, because
+ * a challenge is never allowed to begin on a rest day.
+ */
+describe('rest days', () => {
+  const SHABBAT = [6]
+  const observant = (over: Partial<Challenge> = {}) =>
+    challenge({ startDate: '2026-08-02', restWeekdays: SHABBAT, ...over })
+
+  it('carries a streak across Shabbat', () => {
+    const logs = [log('2026-08-07', 'complete', 6), log('2026-08-09', 'complete', 7)]
+    expect(computeStreak(logs, SHABBAT)).toEqual({ current: 2, best: 2 })
+    // The same two days with no rest day set are a Friday and a Sunday: a real gap.
+    expect(computeStreak(logs, [])).toEqual({ current: 1, best: 1 })
+  })
+
+  it('still breaks on a gap that is not a rest day', () => {
+    const logs = [log('2026-08-07', 'complete', 6), log('2026-08-11', 'complete', 9)]
+    expect(computeStreak(logs, SHABBAT)).toEqual({ current: 1, best: 1 })
+  })
+
+  it('ignores a row left sitting on a rest date', () => {
+    // Rows like this survive from before Saturdays were set aside. A Saturday cannot
+    // add to the run, and it must not break the Friday to Sunday chain either.
+    const logs = [
+      log('2026-08-07', 'complete', 6),
+      log('2026-08-08', 'complete', 7),
+      log('2026-08-09', 'complete', 8),
+    ]
+    expect(computeStreak(logs, SHABBAT)).toEqual({ current: 2, best: 2 })
+  })
+
+  it('never reports a rest day as missed', () => {
+    // Two full weeks in, with nothing logged at all: the first miss is the start date,
+    // and no Saturday is ever named.
+    const now = new Date('2026-08-16T10:00:00Z')
+    const miss = findUnresolvedMiss([], observant(), now)
+    expect(miss).toEqual({ date: '2026-08-02', dayNumber: 1 })
+  })
+
+  it('numbers a miss by active days, so Monday of week two is day seven', () => {
+    const logs = [1, 2, 3, 4, 5, 6].map((n) =>
+      log(['2026-08-02', '2026-08-03', '2026-08-04', '2026-08-05', '2026-08-06', '2026-08-07'][n - 1]!, 'complete', n),
+    )
+    const now = new Date('2026-08-11T10:00:00Z') // Tuesday, so Sunday and Monday are closed
+    expect(findUnresolvedMiss(logs, observant(), now)).toEqual({
+      date: '2026-08-09',
+      dayNumber: 7,
+    })
+  })
+
+  it('stops at the final day however many calendar days have passed', () => {
+    const now = new Date('2026-09-30T10:00:00Z')
+    const logs = [log('2026-08-02', 'complete', 1), log('2026-08-03', 'complete', 2)]
+    expect(findUnresolvedMiss(logs, observant({ lengthDays: 2 }), now)).toBe(null)
+  })
+
+  it('backfills Friday from Sunday', () => {
+    const sunday = new Date('2026-08-09T10:00:00Z')
+    const rest = { dayCutoffHour: 4, timezone: TZ, restWeekdays: SHABBAT }
+    expect(canBackfill('2026-08-07', sunday, rest)).toBe(true)
+    expect(canBackfill('2026-08-08', sunday, rest)).toBe(false)
+  })
+
+  it('does not join two attempts across a rest day', () => {
+    const logs = [
+      log('2026-08-07', 'complete', 6),
+      { ...log('2026-08-09', 'complete', 1), attemptNo: 2 },
+    ]
+    expect(bestStreakEver(logs, SHABBAT)).toBe(1)
   })
 })

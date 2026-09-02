@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { Fragment, useEffect, useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import confetti from 'canvas-confetti'
-import type { TaskEntry } from '@ct/shared'
+import { calendarDaysBetween, type TaskEntry } from '@ct/shared'
 import { api, type DayWriteResponse, type TodayResponse } from '../lib/api'
 import { Ring } from '../components/Ring'
 import { TaskRow } from '../components/TaskRow'
@@ -11,6 +11,10 @@ import { Button, Card, EmptyState, Skeleton, Stat } from '../components/ui'
 import { Reckoning } from '../components/Reckoning'
 import { Goals } from '../components/Goals'
 import { Journal } from '../components/Journal'
+import { Quote } from '../components/Quote'
+import { PanelTabs, type Panel } from '../components/PanelTabs'
+import { useIsWideScreen } from '../lib/useMediaQuery'
+import { formatDate } from '../lib/format'
 import { Schedule } from '../components/Schedule'
 
 export function Today() {
@@ -89,16 +93,19 @@ export function Today() {
 
   useCelebrateOnce(completion === 1 && tasks.length > 0, data?.date)
 
+  // Before the early returns: hooks cannot run conditionally.
+  const wide = useIsWideScreen()
+
   if (isPending) return <TodaySkeleton />
 
   if (!data?.challenge) {
     return (
       <EmptyState
-        title="No challenge running"
-        body="Set your rules, your length, and how much grace you get. Then start day one."
+        title="אין אתגר פעיל"
+        body="קבע את הכללים שלך, את האורך, וכמה חסד מגיע לך. ואז תתחיל את יום 1."
         action={
           <Link to="/challenges">
-            <Button variant="primary">Create a challenge</Button>
+            <Button variant="primary">יצירת אתגר</Button>
           </Link>
         }
       />
@@ -106,141 +113,29 @@ export function Today() {
   }
 
   const { challenge, unresolvedMiss, streak, graceTokensRemaining, dayNumber, daysRemaining } = data
+  const restDay = data.isRestDay === true
 
-  // The challenge is scheduled but its first day has not begun. With a 4am cutoff this
-  // is also true late at night on the eve of day 1, which is why it is a real state and
-  // not just a same-day edge case.
-  if ((dayNumber ?? 0) < 1) {
-    const startsIn = 1 - (dayNumber ?? 0)
-    return (
-      <EmptyState
-        title={`${challenge.name} starts ${startsIn === 1 ? 'tomorrow' : `in ${startsIn} days`}`}
-        body={`Day 1 is ${challenge.startDate}. Nothing to log until then, and the day rolls over at ${String(challenge.dayCutoffHour).padStart(2, '0')}:00.`}
-        action={
-          <Link to={`/challenges/${challenge.id}`}>
-            <Button variant="secondary">Review the rules</Button>
-          </Link>
-        }
-      />
-    )
-  }
-
-  if (unresolvedMiss) {
-    return (
-      <Reckoning
-        challenge={challenge}
-        miss={unresolvedMiss}
-        tokensLeft={graceTokensRemaining ?? 0}
-        bestEver={data.bestEver ?? 0}
-      />
-    )
-  }
-
-  return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <Card>
-        {/*
-          The day after a miss is where a slip turns into a collapse. Naming the rule
-          out loud is the single cheapest intervention against that, and it is phrased
-          as a plan rather than a warning: no red, no guilt, nothing to dismiss.
-        */}
-        {data.missedYesterday && (
-          <div
-            className="mb-4 rounded-xl px-3 py-2.5"
-            style={{ backgroundColor: 'hsl(18 66% 50% / 0.07)' }}
-          >
-            <p className="text-[14px]" style={{ color: 'var(--color-orange-dark)' }}>
-              Yesterday got away. Never miss twice.
-            </p>
-            <p className="mt-0.5 text-[12px] text-ink-muted">
-              One missed day changes almost nothing. Two in a row is how runs actually end.
-            </p>
-          </div>
-        )}
-
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="eyebrow">Day {String(dayNumber).padStart(2, '0')}</p>
-            <h1 dir="auto" className="mt-1 truncate text-2xl">
-              {challenge.name}
-            </h1>
-            <p className="mt-1 text-[13px] text-ink-muted">
-              {daysRemaining === 0 ? 'Final day' : `${daysRemaining} days left`} · of{' '}
-              {challenge.lengthDays}
-            </p>
-          </div>
-          <Ring value={completion}>
-            <div>
-              <p className="tnum font-mono text-2xl leading-none">
-                {Math.round(completion * 100)}
-                <span className="text-sm text-ink-muted">%</span>
-              </p>
-            </div>
-          </Ring>
-        </div>
-
-        {/*
-          An explicit heading over the list. Without it the tasks read as free-floating
-          items that happen to share a screen, which is what made a rule look like a
-          challenge of its own.
-        */}
-        <div className="mt-6 mb-2 flex items-baseline justify-between border-t border-mist/60 pt-4">
-          <p className="eyebrow">Today&rsquo;s rules</p>
-          <p className="tnum font-mono text-[12px] text-ink-muted">
-            {tasks.filter((t) => {
-              const goal = t.kind === 'check' ? 1 : (t.targetValue ?? 1)
-              return (entries.find((e) => e.taskId === t.id)?.value ?? 0) >= goal
-            }).length}
-            {' / '}
-            {tasks.length} done
-          </p>
-        </div>
-
-        <ul className="grid gap-2">
-          {tasks.map((task, index) => (
-            <TaskRow
-              key={task.id}
-              task={task}
-              index={index}
-              entry={entries.find((e) => e.taskId === task.id)}
-              onSetValue={(value) => handleSetValue(task.id, value)}
-              onStartTimer={() => mutate.mutate(() => api.startTimer(data.date!, task.id))}
-              onStopTimer={() => mutate.mutate(() => api.stopTimer(data.date!, task.id))}
-            />
-          ))}
-        </ul>
-
-        {tasks.length === 0 && (
-          <p className="mt-4 text-sm text-ink-muted">
-            This challenge has no tasks yet.{' '}
-            <Link to={`/challenges/${challenge.id}`} className="underline">
-              Add some
-            </Link>
-            .
-          </p>
-        )}
-      </Card>
-
-      <div className="grid content-start gap-4">
-        <Card>
-          <div className="grid grid-cols-3 gap-3">
-            <Stat label="Streak" value={streak?.current ?? 0} tone="gold" />
-            <Stat label="Best ever" value={data.bestEver ?? 0} />
-            <Stat
-              label="Grace"
-              value={graceTokensRemaining ?? 0}
-              suffix={`/ ${challenge.graceTokensTotal}`}
-              tone={graceTokensRemaining === 0 ? 'muted' : 'ink'}
-            />
-          </div>
-        </Card>
-
-        <Journal date={data.date!} initialNote={data.note ?? null} />
-
-        <Goals challengeId={challenge.id} />
-
-        <Schedule challengeId={challenge.id} />
-
+  /*
+    Everything on the screen that is reference or reflection rather than the day's
+    actual work. On a phone these go behind tabs so the rules stay above the fold;
+    on a wide screen they simply stack down the rail as before.
+  */
+  const panels: Panel[] = [
+    // No journal on a rest day: the server will not open a day that has nothing due.
+    ...(restDay
+      ? []
+      : [
+          {
+            key: 'journal',
+            label: 'יומן',
+            node: <Journal date={data.date!} initialNote={data.note ?? null} />,
+          },
+        ]),
+    { key: 'goals', label: 'יעדים', node: <Goals challengeId={challenge.id} /> },
+    {
+      key: 'run',
+      label: 'לוח',
+      node: (
         <Card>
           <div className="mb-3 flex items-center justify-between">
             <p className="eyebrow">The run</p>
@@ -262,6 +157,168 @@ export function Today() {
             <Skeleton className="h-24 w-full" />
           )}
         </Card>
+      ),
+    },
+  ]
+
+  // The challenge is scheduled but its first day has not begun. With a 4am cutoff this
+  // is also true late at night on the eve of day 1, which is why it is a real state and
+  // not just a same-day edge case.
+  //
+  // Compared by date rather than by day number, because a rest day has no day number
+  // and would otherwise read as a challenge that has not started yet.
+  if (data.date && data.date < challenge.startDate) {
+    const startsIn = calendarDaysBetween(data.date, challenge.startDate)
+    return (
+      <EmptyState
+        title={`${challenge.name} ${startsIn === 1 ? 'מתחיל מחר' : `מתחיל בעוד ${startsIn} ימים`}`}
+        body={`יום 1 הוא ${formatDate(challenge.startDate)}. עד אז אין מה לתעד, והיום מתחלף ב-${String(challenge.dayCutoffHour).padStart(2, '0')}:00.`}
+        action={
+          <Link to={`/challenges/${challenge.id}`}>
+            <Button variant="secondary">מעבר לכללים</Button>
+          </Link>
+        }
+      />
+    )
+  }
+
+  if (unresolvedMiss) {
+    return (
+      <Reckoning
+        challenge={challenge}
+        miss={unresolvedMiss}
+        tokensLeft={graceTokensRemaining ?? 0}
+        bestEver={data.bestEver ?? 0}
+      />
+    )
+  }
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+      {restDay ? (
+        <RestDayCard
+          challenge={challenge}
+          daysRemaining={daysRemaining ?? 0}
+          shabbat={data.shabbat ?? null}
+        />
+      ) : (
+      <Card>
+        {/*
+          The day after a miss is where a slip turns into a collapse. Naming the rule
+          out loud is the single cheapest intervention against that, and it is phrased
+          as a plan rather than a warning: no red, no guilt, nothing to dismiss.
+        */}
+        {data.missedYesterday && (
+          <div
+            className="mb-4 rounded-xl px-3 py-2.5"
+            style={{ backgroundColor: 'hsl(18 66% 50% / 0.07)' }}
+          >
+            <p className="text-[14px]" style={{ color: 'var(--color-orange-dark)' }}>
+              אתמול ברח לך. אף פעם לא פעמיים ברצף.
+            </p>
+            <p className="mt-0.5 text-[12px] text-ink-muted">
+              יום אחד שהוחמץ כמעט לא משנה כלום. שניים ברצף זה איך שרצפים באמת נגמרים.
+            </p>
+          </div>
+        )}
+
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="eyebrow">Day {String(dayNumber).padStart(2, '0')}</p>
+            <h1 dir="auto" className="mt-1 truncate text-2xl">
+              {challenge.name}
+            </h1>
+            <p className="mt-1 text-[13px] text-ink-muted">
+              {daysRemaining === 0 ? 'היום האחרון' : `נותרו ${daysRemaining} ימים`} · מתוך{' '}
+              {challenge.lengthDays}
+            </p>
+            {data.shabbat?.kind === 'candle-lighting' && (
+              <p
+                className="mt-1 text-[12px] text-ink-muted"
+                title={`זמן מקורב, מחושב לאזור ${data.shabbat.label}`}
+              >
+                הדלקת נרות ~{data.shabbat.at}. כדאי לסגור את הכללים לפני.
+              </p>
+            )}
+          </div>
+          <Ring value={completion} size={wide ? 132 : 96}>
+            <div>
+              <p className="tnum font-mono text-xl leading-none sm:text-2xl">
+                {Math.round(completion * 100)}
+                <span className="text-sm text-ink-muted">%</span>
+              </p>
+            </div>
+          </Ring>
+        </div>
+
+        {/*
+          An explicit heading over the list. Without it the tasks read as free-floating
+          items that happen to share a screen, which is what made a rule look like a
+          challenge of its own.
+        */}
+        <div className="mt-6 mb-2 flex items-baseline justify-between border-t border-mist/60 pt-4">
+          <p className="eyebrow">Today&rsquo;s rules</p>
+          <p className="tnum font-mono text-[12px] text-ink-muted">
+            הושלמו{' '}
+            {tasks.filter((t) => {
+              const goal = t.kind === 'check' ? 1 : (t.targetValue ?? 1)
+              return (entries.find((e) => e.taskId === t.id)?.value ?? 0) >= goal
+            }).length}{' '}
+            מתוך {tasks.length}
+          </p>
+        </div>
+
+        <ul className="grid gap-1.5 sm:gap-2">
+          {tasks.map((task, index) => (
+            <TaskRow
+              key={task.id}
+              task={task}
+              index={index}
+              entry={entries.find((e) => e.taskId === task.id)}
+              onSetValue={(value) => handleSetValue(task.id, value)}
+              onStartTimer={() => mutate.mutate(() => api.startTimer(data.date!, task.id))}
+              onStopTimer={() => mutate.mutate(() => api.stopTimer(data.date!, task.id))}
+            />
+          ))}
+        </ul>
+
+        {tasks.length === 0 && (
+          <p className="mt-4 text-sm text-ink-muted">
+            עוד לא הוגדרו כללים לאתגר הזה.{' '}
+            <Link to={`/challenges/${challenge.id}`} className="underline">
+              הוסף כללים
+            </Link>
+            .
+          </p>
+        )}
+      </Card>
+      )}
+
+      <div className="grid content-start gap-4">
+        <Card>
+          <div className="grid grid-cols-3 gap-3">
+            <Stat label="Streak" value={streak?.current ?? 0} tone="gold" />
+            <Stat label="Best ever" value={data.bestEver ?? 0} />
+            <Stat
+              label="Grace"
+              value={graceTokensRemaining ?? 0}
+              suffix={`/ ${challenge.graceTokensTotal}`}
+              tone={graceTokensRemaining === 0 ? 'muted' : 'ink'}
+            />
+          </div>
+        </Card>
+
+        <Quote date={data.date!} />
+
+        {/*
+          Stacked on a wide screen, one at a time behind tabs on a phone. Rendered from
+          the same list either way, and only one branch is ever mounted, so the journal
+          never exists twice holding two different unsaved drafts.
+        */}
+        {wide ? panels.map((panel) => <Fragment key={panel.key}>{panel.node}</Fragment>) : <PanelTabs panels={panels} />}
+
+        {/* Short, and hides itself when there is nothing scheduled, so it stays inline. */}
+        <Schedule challengeId={challenge.id} />
       </div>
     </div>
   )
@@ -271,6 +328,49 @@ export function Today() {
  * Confetti fires once, on the transition into a complete day, and is remembered per date
  * so a refresh does not re-celebrate. A celebration you can trigger twice is not one.
  */
+/**
+ * Shabbat, or whichever day the user set aside.
+ *
+ * No ring, no rule list, no counters. A rest day that still showed a progress ring at
+ * zero would read as a day being failed, which is the exact opposite of the point.
+ */
+function RestDayCard({
+  challenge,
+  daysRemaining,
+  shabbat,
+}: {
+  challenge: TodayResponse['challenge'] & {}
+  daysRemaining: number
+  shabbat: NonNullable<TodayResponse['shabbat']> | null
+}) {
+  const nextDay = challenge.lengthDays - daysRemaining + 1
+
+  return (
+    <Card>
+      <p className="eyebrow">Rest day</p>
+      <h1 dir="auto" className="mt-1 truncate text-2xl">
+        {challenge.name}
+      </h1>
+      <p className="mt-3 text-[15px] text-ink-soft">
+        היום לא נדרש כלום, ושום דבר לא בסכנה. הרצף שלך ממשיך ישר מעליו.
+      </p>
+      <p className="mt-2 text-[13px] text-ink-muted">
+        {nextDay <= challenge.lengthDays
+          ? `יום ${nextDay} ממשיך מחר.`
+          : 'זה היה היום האחרון של האתגר.'}
+      </p>
+      {shabbat?.kind === 'havdalah' && (
+        <p
+          className="mt-4 border-t border-mist/60 pt-3 text-[13px] text-ink-muted"
+          title={`זמן מקורב, מחושב לאזור ${shabbat.label}`}
+        >
+          צאת השבת ~{shabbat.at}.
+        </p>
+      )}
+    </Card>
+  )
+}
+
 function useCelebrateOnce(isComplete: boolean, date: string | undefined) {
   const previous = useRef<boolean | null>(null)
 
@@ -315,7 +415,10 @@ function TodaySkeleton() {
         </div>
       </Card>
       <div className="grid content-start gap-4">
+        {/* Mirrors the real rail: stats, quote, journal, goals, schedule, the run. */}
         <Skeleton className="h-[92px] w-full rounded-2xl" />
+        <Skeleton className="h-[104px] w-full rounded-2xl" />
+        <Skeleton className="h-[140px] w-full rounded-2xl" />
         <Skeleton className="h-[180px] w-full rounded-2xl" />
       </div>
     </div>

@@ -1,13 +1,8 @@
-import { addDays } from './challenge-logic.js'
+import { addDays, weekdayOf } from './challenge-logic.js'
 import type { EventOccurrence, ISODate, ScheduledEvent } from './types.js'
 
-/**
- * 0 = Sunday through 6 = Saturday.
- * Computed in UTC so a daylight-saving change can never shift which day it is.
- */
-export function weekdayOf(date: ISODate): number {
-  return new Date(`${date}T00:00:00Z`).getUTCDay()
-}
+// `weekdayOf` now lives in challenge-logic.ts, next to the other date primitives,
+// because rest days need it too and importing it back from here would make a cycle.
 
 export function occursOn(event: ScheduledEvent, date: ISODate): boolean {
   return event.weekdays.includes(weekdayOf(date))

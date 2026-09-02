@@ -1,1 +1,1 @@
-{"root":["./src/app.ts","./src/auth.ts","./src/days.ts","./src/db.ts","./src/env.ts","./src/errors.ts","./src/index.ts","./src/ownership.ts","./src/routes/challenges.ts","./src/routes/tasks.ts","./src/routes/today.ts"],"version":"5.9.3"}
+{"root":["./src/app.ts","./src/auth.ts","./src/days.ts","./src/db.ts","./src/env.ts","./src/errors.ts","./src/index.ts","./src/ownership.ts","./src/routes/calendar.ts","./src/routes/challenges.ts","./src/routes/events.ts","./src/routes/goals.ts","./src/routes/routine.ts","./src/routes/tasks.ts","./src/routes/today.ts"],"version":"5.9.3"}

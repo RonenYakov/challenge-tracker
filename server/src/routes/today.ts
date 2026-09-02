@@ -1,14 +1,22 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import {
-  addDays,
+  activeDayNumber,
+  activeDaysElapsed,
   bestStreakEver,
   computeStreak,
   dayCompletion,
-  dayNumber,
   findUnresolvedMiss,
+  candleLighting,
+  clockTimeIn,
   graceTokensRemaining,
+  havdalah,
+  isRestDay,
+  locationFor,
+  previousActiveDate,
+  weekdayOf,
 } from '@ct/shared'
+import type { Challenge } from '@ct/shared'
 import { sql, toChallengeEvent, toDayLog } from '../db.js'
 import { loadActiveChallenge, loadOwnedChallenge } from '../ownership.js'
 import { notFound } from '../errors.js'
@@ -47,21 +55,31 @@ export async function todayRoutes(app: FastifyInstance) {
     const todayLog = currentAttempt.find((d) => d.logDate === date) ?? null
     const entries = todayLog ? await entriesFor(todayLog.id) : []
 
+    const rest = challenge.restWeekdays
+    const restDay = isRestDay(date, rest)
+    const elapsed = activeDaysElapsed(date, challenge.startDate, rest, challenge.lengthDays)
+
     return {
       challenge,
       tasks,
       date,
-      dayNumber: dayNumber(date, challenge.startDate),
-      daysRemaining: Math.max(0, challenge.lengthDays - dayNumber(date, challenge.startDate)),
+      isRestDay: restDay,
+      // Null on a rest day: there is no day number because no day of the challenge is
+      // being spent. `daysRemaining` still answers, which is what the header needs.
+      dayNumber: activeDayNumber(date, challenge.startDate, rest),
+      daysRemaining: Math.max(0, challenge.lengthDays - elapsed),
+      shabbat: shabbatNoticeFor(challenge, date),
       entries,
       note: todayLog?.note ?? null,
       completion: dayCompletion(entries, tasks),
-      streak: computeStreak(currentAttempt),
+      streak: computeStreak(currentAttempt, rest),
       // Never-miss-twice: the day after a miss is where a slip becomes a collapse,
-      // so the client is told explicitly rather than inferring it.
+      // so the client is told explicitly rather than inferring it. The day before is
+      // the previous ACTIVE day, or Sunday would never mention a missed Friday.
       missedYesterday:
-        currentAttempt.find((d) => d.logDate === addDays(date, -1))?.status === 'incomplete',
-      bestEver: bestStreakEver(days),
+        currentAttempt.find((d) => d.logDate === previousActiveDate(date, rest))?.status ===
+        'incomplete',
+      bestEver: bestStreakEver(days, rest),
       graceTokensRemaining: graceTokensRemaining(challenge, eventRows.map(toChallengeEvent)),
       unresolvedMiss: findUnresolvedMiss(days, challenge, new Date()),
     }
@@ -139,6 +157,35 @@ export async function todayRoutes(app: FastifyInstance) {
   })
 }
 
+/**
+ * The Shabbat deadline to show, or null.
+ *
+ * Shabbat runs Friday evening to Saturday night, but the rest day is the whole civil
+ * Saturday, because a half day cannot be the unit a streak is counted in. Friday stays
+ * required, so instead of moving the boundary the app just says when the deadline is.
+ *
+ * Null unless Saturday is actually set aside, the timezone is one we have coordinates
+ * for, and there is a sunset that day. A wrong time here is worse than no time.
+ */
+function shabbatNoticeFor(challenge: Challenge, date: string) {
+  if (!challenge.restWeekdays.includes(6)) return null
+
+  const location = locationFor(challenge.timezone)
+  if (!location) return null
+
+  const weekday = weekdayOf(date)
+  const instant =
+    weekday === 5 ? candleLighting(date, location) : weekday === 6 ? havdalah(date, location) : null
+  if (!instant) return null
+
+  return {
+    kind: weekday === 5 ? ('candle-lighting' as const) : ('havdalah' as const),
+    at: clockTimeIn(instant, challenge.timezone),
+    label: location.label,
+    approximate: true as const,
+  }
+}
+
 async function requireActive(userId: string) {
   const challenge = await loadActiveChallenge(userId)
   if (!challenge) throw notFound('Active challenge')
@@ -158,6 +205,6 @@ async function summarise(challenge: Awaited<ReturnType<typeof requireActive>>, d
     day: refreshed,
     entries,
     completion: dayCompletion(entries, tasks),
-    streak: computeStreak(dayRows.map(toDayLog)),
+    streak: computeStreak(dayRows.map(toDayLog), challenge.restWeekdays),
   }
 }

@@ -1,5 +1,5 @@
 import type { Challenge, DayLog, ISODate, Task, TaskEntry } from '@ct/shared'
-import { canBackfill, dayCompletion, dayNumber, resolveActiveDate } from '@ct/shared'
+import { activeDayNumber, canBackfill, dayCompletion, resolveActiveDate } from '@ct/shared'
 import { sql, toDayLog, toTask, toTaskEntry } from './db.js'
 import { badRequest, notFound } from './errors.js'
 
@@ -34,19 +34,25 @@ export async function openDayForWriting(
 ): Promise<DayLog> {
   const today = activeDateFor(challenge, now)
   const isToday = date === today
-  const isBackfill = canBackfill(date, now, challenge.dayCutoffHour, challenge.timezone)
+  const isBackfill = canBackfill(date, now, challenge)
 
   if (!isToday && !isBackfill) {
     throw badRequest(
       date > today
-        ? 'That day has not started yet.'
-        : 'That day is closed. Only today and yesterday can be edited.',
+        ? 'היום הזה עוד לא התחיל.'
+        : 'היום הזה סגור. אפשר לערוך רק את היום ואת אתמול.',
     )
   }
 
-  const day = dayNumber(date, challenge.startDate)
-  if (day < 1 || day > challenge.lengthDays) {
-    throw badRequest('That date falls outside the challenge.')
+  // Null means nothing is due: a rest day is not a day of the challenge, so there is
+  // no row to open and nothing to score. Checked before the range test, which has no
+  // sensible answer for a date that has no day number at all.
+  const day = activeDayNumber(date, challenge.startDate, challenge.restWeekdays)
+  if (day === null) {
+    throw badRequest('זה יום מנוחה. לא נדרש כלום.')
+  }
+  if (day > challenge.lengthDays) {
+    throw badRequest('התאריך הזה נמצא מחוץ לאתגר.')
   }
 
   const [row] = await sql`

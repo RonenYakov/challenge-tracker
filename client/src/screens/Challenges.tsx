@@ -2,14 +2,16 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Challenge } from '@ct/shared'
-import { api } from '../lib/api'
+import { api, type NewChallenge } from '../lib/api'
 import { Button, Card, ErrorCard, Field, Input, Skeleton } from '../components/ui'
+import { SHABBAT_PRESET, WeekdayPicker } from '../components/WeekdayPicker'
+import { formatDateShort } from '../lib/format'
 
 const STATUS_LABEL: Record<Challenge['status'], string> = {
-  active: 'Running',
-  draft: 'Draft',
-  completed: 'Finished',
-  abandoned: 'Stopped',
+  active: 'רץ',
+  draft: 'טיוטה',
+  completed: 'הסתיים',
+  abandoned: 'הופסק',
 }
 
 export function Challenges() {
@@ -38,7 +40,7 @@ export function Challenges() {
         </div>
         {!creating && (
           <Button variant="primary" onClick={() => setCreating(true)}>
-            New challenge
+            אתגר חדש
           </Button>
         )}
       </div>
@@ -69,14 +71,14 @@ export function Challenges() {
                   <div className="min-w-0">
                     <p className="eyebrow">
                       {STATUS_LABEL[challenge.status]}
-                      {challenge.attemptNo > 1 && ` · attempt ${challenge.attemptNo}`}
+                      {challenge.attemptNo > 1 && ` · ניסיון ${challenge.attemptNo}`}
                     </p>
                     <p dir="auto" className="mt-1 truncate text-lg">
                       {challenge.name}
                     </p>
                     <p className="tnum mt-0.5 font-mono text-[12px] text-ink-muted">
-                      {challenge.lengthDays} days · from {challenge.startDate} ·{' '}
-                      {challenge.graceTokensTotal} grace
+                      {challenge.lengthDays} ימים · מ-{formatDateShort(challenge.startDate)} ·{' '}
+                      {challenge.graceTokensTotal} חסד
                     </p>
                   </div>
                   <span
@@ -94,7 +96,7 @@ export function Challenges() {
           {data?.challenges.length === 0 && !creating && (
             <Card>
               <p className="text-sm text-ink-muted">
-                Nothing here yet. Create a challenge, add your rules, then start day one.
+                עדיין אין כאן כלום. צור אתגר, הוסף את הכללים שלך, ואז תתחיל את יום 1.
               </p>
             </Card>
           )}
@@ -110,14 +112,7 @@ function NewChallengeForm({
   pending,
   error,
 }: {
-  onSubmit: (values: {
-    name: string
-    startDate: string
-    lengthDays: number
-    dayCutoffHour: number
-    timezone: string
-    graceTokensTotal: number
-  }) => void
+  onSubmit: (values: NewChallenge) => void
   onCancel: () => void
   pending: boolean
   error: Error | null
@@ -128,6 +123,7 @@ function NewChallengeForm({
   const [lengthDays, setLengthDays] = useState(60)
   const [cutoff, setCutoff] = useState(4)
   const [grace, setGrace] = useState(3)
+  const [restWeekdays, setRestWeekdays] = useState<number[]>([])
 
   return (
     <Card className="mb-5">
@@ -142,24 +138,25 @@ function NewChallengeForm({
             dayCutoffHour: cutoff,
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Jerusalem',
             graceTokensTotal: grace,
+            restWeekdays,
           })
         }}
       >
-        <Field label="Name">
+        <Field label="שם">
           <Input
             dir="auto"
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="60 days of getting up early"
+            placeholder="60 יום של קימה מוקדמת"
           />
         </Field>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Starts">
+          <Field label="מתחיל">
             <Input type="date" required value={startDate} onChange={(e) => setStartDate(e.target.value)} />
           </Field>
-          <Field label="Length" hint="Any length you want. 30, 60, 75, 100.">
+          <Field label="אורך" hint="כל אורך שתרצה. 30, 60, 75, 100.">
             <Input
               type="number"
               min={1}
@@ -172,7 +169,7 @@ function NewChallengeForm({
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Day ends at" hint="Finishing at 1am still counts for the day before.">
+          <Field label="היום נגמר ב" hint="סיום ב-01:00 עדיין נחשב ליום הקודם.">
             <Input
               type="number"
               min={0}
@@ -182,7 +179,7 @@ function NewChallengeForm({
               onChange={(e) => setCutoff(Number(e.target.value))}
             />
           </Field>
-          <Field label="Grace tokens" hint="Missed days you can cover. 0 for full 75 Hard rules.">
+          <Field label="אסימוני חסד" hint="ימים שהוחמצו שאפשר לכסות. 0 בשביל כללי 75 Hard מלאים.">
             <Input
               type="number"
               min={0}
@@ -194,6 +191,14 @@ function NewChallengeForm({
           </Field>
         </div>
 
+        <WeekdayPicker
+          label="ימי מנוחה (לא חובה)"
+          hint="לרוב אין צורך בזה. אם אתה שומר שבת, או שיש יום קבוע שבו אתה לא מתאמן, סמן אותו כאן: לא נדרש בו כלום, הוא לא נחשב החמצה, והרצף ממשיך מעליו. האורך נספר בימי עבודה, אז 60 יום עם שבתות פנויות נמשכים בערך 70 יום בלוח השנה."
+          selected={restWeekdays}
+          onChange={setRestWeekdays}
+          presets={[SHABBAT_PRESET]}
+        />
+
         {error && (
           <p className="shake text-sm" style={{ color: 'var(--color-clay)' }}>
             {error.message}
@@ -202,10 +207,10 @@ function NewChallengeForm({
 
         <div className="flex gap-2">
           <Button type="submit" variant="primary" loading={pending}>
-            {pending ? 'Creating…' : 'Create'}
+            {pending ? 'יוצר…' : 'יצירה'}
           </Button>
           <Button type="button" variant="ghost" onClick={onCancel}>
-            Cancel
+            ביטול
           </Button>
         </div>
       </form>

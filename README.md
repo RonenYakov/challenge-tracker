@@ -36,10 +36,21 @@ cp client/.env.example client/.env
 
 Already complete — the publishable key is safe to keep in the repo.
 
-### 3. Turn on email sign-in
+### 3. Turn on sign-in
 
-In Supabase: Authentication → Providers → Email, and make sure email is enabled.
-Under URL Configuration, add `http://localhost:5173` as a redirect URL.
+In Supabase, Authentication → Providers:
+
+- **Email** enabled. Keep "Confirm email" on, or anyone can register with an address
+  they do not own.
+- **Google** enabled, with a client id and secret from the Google Cloud console. Without
+  it the "המשך עם Google" button fails.
+
+Under URL Configuration, add `http://localhost:5173` as a redirect URL, plus your
+production origin. Both the magic link and the password reset land back on the origin
+they started from, so there is no callback route to configure.
+
+Worth turning on while you are there: Authentication → Policies → leaked password
+protection, which checks new passwords against HaveIBeenPwned.
 
 ## Running it
 

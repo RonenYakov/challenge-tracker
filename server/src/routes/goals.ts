@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
-import { goalProgress } from '@ct/shared'
+import { activeDaysElapsed, goalProgress } from '@ct/shared'
 import { sql, toGoal, toGoalEntry } from '../db.js'
 import { loadOwnedChallenge, loadOwnedGoal } from '../ownership.js'
 import { badRequest } from '../errors.js'
@@ -57,13 +57,18 @@ export async function goalRoutes(app: FastifyInstance) {
           goal,
           entries: own,
           progress: goalProgress(goal, own, challenge, today),
+          // Active days, not calendar days, and via the shared helper rather than the
+          // arithmetic that used to be open-coded here and would have kept counting
+          // rest days against the deadline.
           daysRemaining: Math.max(
             0,
             challenge.lengthDays -
-              (Math.round(
-                (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${challenge.startDate}T00:00:00Z`)) /
-                  86_400_000,
-              ) + 1),
+              activeDaysElapsed(
+                today,
+                challenge.startDate,
+                challenge.restWeekdays,
+                challenge.lengthDays,
+              ),
           ),
         }
       }),
@@ -78,7 +83,7 @@ export async function goalRoutes(app: FastifyInstance) {
     // A target identical to the start has nothing to track and would render as
     // permanently complete, which is confusing rather than useful.
     if (body.kind === 'number' && body.startValue === body.targetValue) {
-      throw badRequest('The target has to differ from the starting value.')
+      throw badRequest('היעד חייב להיות שונה מערך ההתחלה.')
     }
 
     const [row] = await sql`
@@ -118,7 +123,7 @@ export async function goalRoutes(app: FastifyInstance) {
     const { goal, challenge } = await loadOwnedGoal(request.user.id, id)
 
     if (goal.kind !== 'milestone') {
-      throw badRequest('A numeric goal is finished by its readings, not by ticking it.')
+      throw badRequest('יעד מספרי נסגר לפי המדידות שלו, לא בסימון ידני.')
     }
 
     const [row] = await sql`
@@ -152,7 +157,7 @@ export async function goalRoutes(app: FastifyInstance) {
 
     const { goal, challenge } = await loadOwnedGoal(request.user.id, id)
     if (goal.kind !== 'number') {
-      throw badRequest('This goal is done or not done; there is no reading to log.')
+      throw badRequest('היעד הזה הוא בוצע או לא בוצע, אין מה לתעד בו.')
     }
 
     const today = activeDateFor(challenge)
@@ -160,9 +165,9 @@ export async function goalRoutes(app: FastifyInstance) {
 
     // Unlike a daily task, a goal reading is not a streak claim, so backdating within
     // the challenge is allowed. The future is not.
-    if (loggedOn > today) throw badRequest('You cannot log a reading for a future date.')
+    if (loggedOn > today) throw badRequest('אי אפשר לתעד מדידה לתאריך עתידי.')
     if (loggedOn < challenge.startDate) {
-      throw badRequest('That date is before the challenge started.')
+      throw badRequest('התאריך הזה מוקדם מתחילת האתגר.')
     }
 
     await sql`

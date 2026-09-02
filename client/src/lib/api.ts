@@ -58,7 +58,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   return Promise.race([
     promise,
     new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new ApiError(0, `${label} timed out. Check your connection.`)), ms),
+      setTimeout(() => reject(new ApiError(0, `${label}: הבקשה לא הספיקה. בדוק את החיבור.`)), ms),
     ),
   ])
 }
@@ -66,9 +66,9 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   // getSession refreshes an expiring token over the network, and that call can stall.
   // Unbounded, it means the request is never even sent and the screen spins forever.
-  const { data } = await withTimeout(supabase.auth.getSession(), 10_000, 'Sign-in check')
+  const { data } = await withTimeout(supabase.auth.getSession(), 10_000, 'בדיקת התחברות')
   const token = data.session?.access_token
-  if (!token) throw new ApiError(401, 'Not signed in')
+  if (!token) throw new ApiError(401, 'לא מחובר')
 
   let response: Response
   try {
@@ -87,15 +87,15 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     // A network failure or abort is not an HTTP status, so give it a readable message
     // rather than letting a raw "Failed to fetch" reach the screen.
     const reason = error instanceof DOMException && error.name === 'TimeoutError'
-      ? 'The server took too long to respond.'
-      : 'Could not reach the server. Check your connection.'
+      ? 'השרת לקח יותר מדי זמן להגיב.'
+      : 'אין תקשורת עם השרת. בדוק את החיבור.'
     throw new ApiError(0, reason)
   }
 
   if (response.status === 204) return undefined as T
   const body = await response.json().catch(() => ({}))
   if (!response.ok) {
-    throw new ApiError(response.status, (body as { error?: string }).error ?? 'Request failed')
+    throw new ApiError(response.status, (body as { error?: string }).error ?? 'הבקשה נכשלה')
   }
   return body as T
 }
@@ -113,8 +113,17 @@ export interface TodayResponse {
   challenge: Challenge | null
   tasks?: Task[]
   date?: ISODate
-  dayNumber?: number
+  /** Null on a rest day: no day of the challenge is being spent. */
+  dayNumber?: number | null
+  isRestDay?: boolean
   daysRemaining?: number
+  shabbat?: {
+    kind: 'candle-lighting' | 'havdalah'
+    /** 'HH:MM' in the challenge's timezone. */
+    at: string
+    label: string
+    approximate: true
+  } | null
   entries?: TaskEntry[]
   note?: string | null
   completion?: number
@@ -156,6 +165,8 @@ export interface NewChallenge {
   dayCutoffHour: number
   timezone: string
   graceTokensTotal: number
+  /** 0 = Sunday through 6 = Saturday. Days with nothing due. */
+  restWeekdays: number[]
 }
 
 export interface GoalWithProgress {

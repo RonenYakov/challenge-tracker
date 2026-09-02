@@ -57,6 +57,9 @@ export function toChallenge(r: Row): Challenge {
     dayCutoffHour: num(r.day_cutoff_hour),
     timezone: str(r.timezone),
     graceTokensTotal: num(r.grace_tokens_total),
+    // Read defensively: an API deploy that lands before the migration would otherwise
+    // hand every rest-aware function undefined instead of an empty array.
+    restWeekdays: Array.isArray(r.rest_weekdays) ? (r.rest_weekdays as unknown[]).map(Number) : [],
     attemptNo: num(r.attempt_no),
     status: r.status as Challenge['status'],
     createdAt: iso(r.created_at),

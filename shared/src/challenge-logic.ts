@@ -1,4 +1,11 @@
 import type { Challenge, ChallengeEvent, DayLog, ISODate, Miss, Streak, Task, TaskEntry } from './types.js'
+import {
+  activeDaysBefore,
+  isRestDay,
+  nextActiveDate,
+  previousActiveDate,
+  type RestWeekdays,
+} from './rest-logic.js'
 
 const DAY_MS = 86_400_000
 const RESOLVED: ReadonlySet<DayLog['status']> = new Set(['complete', 'graced'])
@@ -24,6 +31,14 @@ function zonedParts(instant: Date, timeZone: string): { date: ISODate; hour: num
   }
 }
 
+/**
+ * 0 = Sunday through 6 = Saturday.
+ * Computed in UTC so a daylight-saving change can never shift which day it is.
+ */
+export function weekdayOf(date: ISODate): number {
+  return new Date(`${date}T00:00:00Z`).getUTCDay()
+}
+
 /** Shift a date-only string by whole days. Done in UTC so DST can never move the result. */
 export function addDays(date: ISODate, days: number): ISODate {
   const shifted = new Date(Date.parse(`${date}T00:00:00Z`) + days * DAY_MS)
@@ -40,10 +55,16 @@ export function resolveActiveDate(now: Date, cutoffHour: number, timeZone: strin
   return hour < cutoffHour ? addDays(date, -1) : date
 }
 
-/** 1-based day index within the challenge. The start date is day 1. */
-export function dayNumber(logDate: ISODate, startDate: ISODate): number {
-  const diff = (Date.parse(`${logDate}T00:00:00Z`) - Date.parse(`${startDate}T00:00:00Z`)) / DAY_MS
-  return Math.round(diff) + 1
+/**
+ * Whole calendar days from `from` to `to`, the inverse of `addDays`.
+ *
+ * Deliberately NOT a day number. Day numbers count active days and skip rest days, so
+ * they live in rest-logic.ts; anything that wants "what day of the challenge is this"
+ * should be calling `activeDayNumber` or `activeDaysElapsed` instead.
+ */
+export function calendarDaysBetween(from: ISODate, to: ISODate): number {
+  const diff = (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / DAY_MS
+  return Math.round(diff)
 }
 
 /** The target a task must reach to count as done. A checkbox is simply 1. */
@@ -71,9 +92,10 @@ export function findUnresolvedMiss(
   challenge: Challenge,
   now: Date,
 ): Miss | null {
+  const rest = challenge.restWeekdays
   const activeDate = resolveActiveDate(now, challenge.dayCutoffHour, challenge.timezone)
   const lastRequiredDay = Math.min(
-    dayNumber(activeDate, challenge.startDate) - 1,
+    activeDaysBefore(activeDate, challenge.startDate, rest, challenge.lengthDays),
     challenge.lengthDays,
   )
   if (lastRequiredDay < 1) return null
@@ -82,8 +104,13 @@ export function findUnresolvedMiss(
     dayLogs.filter((d) => d.attemptNo === challenge.attemptNo).map((d) => [d.logDate, d]),
   )
 
-  for (let day = 1; day <= lastRequiredDay; day++) {
-    const date = addDays(challenge.startDate, day - 1)
+  // One forward walk with a running counter. Asking rest-logic for the date of each day
+  // number in turn would re-walk from the start every iteration, which is quadratic and
+  // runs on every request to /api/today.
+  let day = 0
+  for (let date = challenge.startDate; day < lastRequiredDay; date = addDays(date, 1)) {
+    if (isRestDay(date, rest)) continue
+    day++
     const log = byDate.get(date)
     if (!log || !RESOLVED.has(log.status)) {
       return { date, dayNumber: day }
@@ -96,8 +123,13 @@ export function findUnresolvedMiss(
  * Current and best run of unbroken days. Graced days keep a run alive.
  * A trailing `pending` day is today, still in play, so it neither counts nor breaks.
  */
-export function computeStreak(dayLogs: readonly DayLog[]): Streak {
-  const sorted = [...dayLogs].sort((a, b) => a.logDate.localeCompare(b.logDate))
+export function computeStreak(dayLogs: readonly DayLog[], restWeekdays: RestWeekdays): Streak {
+  const sorted = [...dayLogs]
+    // A row sitting on a rest date is not part of the run in either direction. Rows like
+    // that survive from before rest days were turned on; without this filter one would
+    // both pad the streak and break the chain, since the next active date skips past it.
+    .filter((d) => !isRestDay(d.logDate, restWeekdays))
+    .sort((a, b) => a.logDate.localeCompare(b.logDate))
 
   let best = 0
   let run = 0
@@ -106,7 +138,9 @@ export function computeStreak(dayLogs: readonly DayLog[]): Streak {
   for (let i = 0; i < sorted.length; i++) {
     const log = sorted[i]!
     const previous = i > 0 ? sorted[i - 1] : undefined
-    const isConsecutive = previous ? addDays(previous.logDate, 1) === log.logDate : true
+    const isConsecutive = previous
+      ? nextActiveDate(previous.logDate, restWeekdays) === log.logDate
+      : true
 
     if (log.status === 'pending') {
       // Today, undecided. Freeze the run as it stands rather than counting or breaking it.
@@ -125,14 +159,19 @@ export function computeStreak(dayLogs: readonly DayLog[]): Streak {
   return { current, best }
 }
 
-/** Only the single day before the logical today may be filled in after the fact. */
+/**
+ * Only the single active day before the logical today may be filled in after the fact.
+ *
+ * With Saturdays off that means Sunday backfills Friday: two calendar days back, but
+ * one day of the challenge back, which is the unit that matters.
+ */
 export function canBackfill(
   logDate: ISODate,
   now: Date,
-  cutoffHour: number,
-  timeZone: string,
+  challenge: Pick<Challenge, 'dayCutoffHour' | 'timezone' | 'restWeekdays'>,
 ): boolean {
-  return logDate === addDays(resolveActiveDate(now, cutoffHour, timeZone), -1)
+  const activeDate = resolveActiveDate(now, challenge.dayCutoffHour, challenge.timezone)
+  return logDate === previousActiveDate(activeDate, challenge.restWeekdays)
 }
 
 /**
@@ -160,11 +199,11 @@ export function graceTokensRemaining(
  * A run never spans a reset, even where the dates are consecutive: those were two
  * different attempts and joining them would invent a streak that never happened.
  */
-export function bestStreakEver(dayLogs: readonly DayLog[]): number {
+export function bestStreakEver(dayLogs: readonly DayLog[], restWeekdays: RestWeekdays): number {
   const attempts = new Set(dayLogs.map((d) => d.attemptNo))
   let best = 0
   for (const attempt of attempts) {
-    const run = computeStreak(dayLogs.filter((d) => d.attemptNo === attempt))
+    const run = computeStreak(dayLogs.filter((d) => d.attemptNo === attempt), restWeekdays)
     best = Math.max(best, run.best)
   }
   return best

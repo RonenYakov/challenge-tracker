@@ -7,7 +7,7 @@ const TZ = 'Asia/Jerusalem'
 function challenge(over: Partial<Challenge> = {}): Challenge {
   return {
     id: 'c1', userId: 'u1', name: 'Test', startDate: '2026-09-01',
-    lengthDays: 60, dayCutoffHour: 4, timezone: TZ, graceTokensTotal: 0,
+    lengthDays: 60, dayCutoffHour: 4, timezone: TZ, graceTokensTotal: 0, restWeekdays: [],
     attemptNo: 1, status: 'active', createdAt: '', ...over,
   }
 }

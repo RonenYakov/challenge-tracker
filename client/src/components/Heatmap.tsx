@@ -1,4 +1,5 @@
-import { addDays, dayNumber } from '@ct/shared'
+import { activeDaysBefore, addDays, isRestDay } from '@ct/shared'
+import { formatDate } from '../lib/format'
 import type { Challenge, DayLog } from '@ct/shared'
 
 interface HeatmapProps {
@@ -18,13 +19,22 @@ const FILL: Record<DayLog['status'] | 'empty' | 'future' | 'today', string> = {
   today: 'var(--color-cream-dark)',
 }
 
+const STATUS_TEXT: Record<string, string> = {
+  complete: 'הושלם',
+  graced: 'חסד',
+  incomplete: 'הוחמץ',
+  pending: 'פתוח',
+  empty: 'לא תועד',
+  today: 'היום',
+}
+
 /**
  * The whole challenge at a glance. Days from earlier attempts are shown faded rather
  * than hidden: a run that failed is part of the record.
  */
 export function Heatmap({ challenge, days, today, onSelect }: HeatmapProps) {
   const byDate = new Map(days.map((d) => [d.logDate, d]))
-  const todayNumber = dayNumber(today, challenge.startDate)
+  const rest = challenge.restWeekdays
 
   /**
    * A reset moves `startDate` forward, which would push every day of the failed attempt
@@ -37,20 +47,45 @@ export function Heatmap({ challenge, days, today, onSelect }: HeatmapProps) {
   )
   const gridStart =
     earliestLogged && earliestLogged < challenge.startDate ? earliestLogged : challenge.startDate
-  const leadIn = dayNumber(challenge.startDate, gridStart) - 1
+  const leadIn = activeDaysBefore(challenge.startDate, gridStart, rest)
   const totalCells = leadIn + challenge.lengthDays
 
-  const cells = Array.from({ length: totalCells }, (_, i) => {
-    const date = addDays(gridStart, i)
-    const log = byDate.get(date)
-    const dayNo = i - leadIn + 1
-    const isFuture = dayNo > todayNumber
-    const isToday = dayNo === todayNumber
-    const status = log?.status ?? (isFuture ? 'future' : 'empty')
-    const fromPastAttempt = log ? log.attemptNo < challenge.attemptNo : dayNo < 1
+  /*
+    One cell per day of the challenge, so rest days simply are not on the wall. The grid
+    is auto-fill with no weekday columns, so there is no calendar alignment to lose by
+    skipping them, and the count finally matches the length.
 
-    return { date, dayNo: log?.dayNumber ?? dayNo, status, isToday, isFuture, fromPastAttempt }
-  })
+    A single forward walk, because asking for the date of each day number in turn would
+    re-walk from the start every cell.
+  */
+  const cells: {
+    date: string
+    dayNo: number
+    status: string
+    isToday: boolean
+    isFuture: boolean
+    fromPastAttempt: boolean
+  }[] = []
+
+  let index = 0
+  for (let date = gridStart; cells.length < totalCells; date = addDays(date, 1)) {
+    const log = byDate.get(date)
+    // A row on a rest date can only come from before the rest day was set aside. Keeping
+    // it visible matters more than a tidy grid: this wall is the record of what happened.
+    if (isRestDay(date, rest) && !log) continue
+
+    const dayNo = index - leadIn + 1
+    if (!isRestDay(date, rest)) index++
+
+    cells.push({
+      date,
+      dayNo: log?.dayNumber ?? dayNo,
+      status: log?.status ?? (date > today ? 'future' : 'empty'),
+      isToday: date === today,
+      isFuture: date > today,
+      fromPastAttempt: log ? log.attemptNo < challenge.attemptNo : dayNo < 1,
+    })
+  }
 
   return (
     <div
@@ -63,8 +98,8 @@ export function Heatmap({ challenge, days, today, onSelect }: HeatmapProps) {
           type="button"
           disabled={cell.isFuture || !onSelect}
           onClick={() => onSelect?.(cell.date)}
-          title={`Day ${cell.dayNo} · ${cell.date}${cell.status === 'future' ? '' : ` · ${cell.status}`}`}
-          aria-label={`Day ${cell.dayNo}, ${cell.status}`}
+          title={`יום ${cell.dayNo} · ${formatDate(cell.date)}${cell.status === 'future' ? '' : ` · ${STATUS_TEXT[cell.status] ?? cell.status}`}`}
+          aria-label={`יום ${cell.dayNo}, ${STATUS_TEXT[cell.status] ?? cell.status}`}
           className="aspect-square rounded-[3px] border transition-transform duration-100 enabled:hover:scale-125 disabled:cursor-default"
           style={{
             backgroundColor: FILL[cell.status as keyof typeof FILL],
@@ -84,10 +119,10 @@ export function Heatmap({ challenge, days, today, onSelect }: HeatmapProps) {
 
 export function HeatmapLegend() {
   const items = [
-    ['Done', FILL.complete],
-    ['Grace', FILL.graced],
-    ['Missed', FILL.incomplete],
-    ['Not yet', FILL.empty],
+    ['הושלם', FILL.complete],
+    ['חסד', FILL.graced],
+    ['הוחמץ', FILL.incomplete],
+    ['עוד לא', FILL.empty],
   ] as const
 
   return (

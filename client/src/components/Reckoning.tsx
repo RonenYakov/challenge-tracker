@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import type { Challenge, Miss } from '@ct/shared'
 import { api } from '../lib/api'
 import { Button, Card } from './ui'
+import { formatDate } from '../lib/format'
 
 /**
  * Shown when a closed day was never completed. It is deliberately plain and deliberately
@@ -39,12 +40,12 @@ export function Reckoning({
         </p>
 
         <h1 className="mt-2 text-2xl">
-          Day {miss.dayNumber} was not completed.
+          יום {miss.dayNumber} לא הושלם.
         </h1>
 
         <p className="mt-2 text-[15px] text-ink-soft">
-          {miss.date} closed with tasks left undone. You set the rules, so this is your call
-          to make, not the app&rsquo;s.
+          {formatDate(miss.date)} נסגר עם כללים שלא בוצעו. אתה קבעת את הכללים, אז ההחלטה
+          הזאת שלך ולא של האפליקציה.
         </p>
 
         {/*
@@ -54,31 +55,29 @@ export function Reckoning({
           The point is to keep the decision in view, not to talk the user out of a reset.
         */}
         <p className="mt-3 rounded-lg bg-cream px-3 py-2.5 text-[13px] leading-relaxed text-ink-muted">
-          Worth knowing: in the study that produced the &ldquo;66 days to build a habit&rdquo;
-          figure, missing a single day made no measurable difference to how the habit
-          formed. One day off does not undo the run. Deciding you have failed is what
-          usually does.
+          כדאי לדעת: במחקר שממנו הגיע המספר של 66 יום לבניית הרגל, יום אחד שהוחמץ לא
+          השפיע בכלל על קצב היווצרות ההרגל. יום אחד לא הורס את הרצף. ההחלטה שנכשלת היא
+          זו שבדרך כלל כן.
         </p>
 
         {bestEver > 0 && (
           <p className="tnum mt-2 font-mono text-[12px] text-ink-muted">
-            Your longest run so far: {bestEver} days. That happened, and a reset does not
-            erase it.
+            הרצף הארוך ביותר שלך עד היום: {bestEver} ימים. זה קרה, ואיפוס לא מוחק את זה.
           </p>
         )}
 
         <div className="mt-6 grid gap-3">
           <div className="rounded-xl border border-mist bg-cream p-4">
             <div className="flex items-baseline justify-between">
-              <p className="font-medium">Spend a grace token</p>
+              <p className="font-medium">שימוש באסימון חסד</p>
               <p className="tnum font-mono text-sm text-ink-muted">
-                {tokensLeft} left
+                נותרו {tokensLeft}
               </p>
             </div>
             <p className="mt-1 text-[13px] text-ink-muted">
               {hasGrace
-                ? 'The day counts as covered and your streak holds. The grid still shows it was grace, not a win.'
-                : 'You have no tokens left for this attempt.'}
+                ? 'היום ייחשב מכוסה והרצף נשמר. בלוח עדיין יסומן שזה חסד ולא יום שהושלם.'
+                : 'לא נותרו לך אסימונים בניסיון הזה.'}
             </p>
             <Button
               variant="primary"
@@ -86,14 +85,14 @@ export function Reckoning({
               disabled={!hasGrace || resolve.isPending}
               onClick={() => resolve.mutate('grace')}
             >
-              {hasGrace ? 'Use a token' : 'None left'}
+              {hasGrace ? 'שימוש באסימון' : 'לא נותרו אסימונים'}
             </Button>
           </div>
 
           <div className="rounded-xl border border-mist p-4">
-            <p className="font-medium">Take the reset</p>
+            <p className="font-medium">איפוס האתגר</p>
             <p className="mt-1 text-[13px] text-ink-muted">
-              Back to day 1, starting today. Your previous attempt stays in the grid.
+              חזרה ליום 1, מהיום. הניסיון הקודם נשאר בלוח.
             </p>
 
             {confirmingReset ? (
@@ -104,10 +103,10 @@ export function Reckoning({
                   disabled={resolve.isPending}
                   onClick={() => resolve.mutate('reset')}
                 >
-                  Yes, reset to day 1
+                  כן, אפס ליום 1
                 </Button>
                 <Button variant="ghost" onClick={() => setConfirmingReset(false)}>
-                  Cancel
+                  ביטול
                 </Button>
               </div>
             ) : (
@@ -116,7 +115,7 @@ export function Reckoning({
                 className="mt-3 w-full"
                 onClick={() => setConfirmingReset(true)}
               >
-                Reset the challenge
+                איפוס האתגר
               </Button>
             )}
           </div>

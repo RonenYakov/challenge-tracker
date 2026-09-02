@@ -50,7 +50,7 @@ export function Routine({ challengeId }: { challengeId: string }) {
             onClick={() => setEditing(true)}
             className="touch text-[12px] text-ink-muted underline hover:text-ink"
           >
-            Edit hours
+            עריכת השעות
           </button>
         )}
       </div>
@@ -58,12 +58,12 @@ export function Routine({ challengeId }: { challengeId: string }) {
       {!routine && !editing && (
         <div>
           <p className="text-[13px] text-ink-muted">
-            Tell the app roughly when you wake, work and sleep, and it can suggest moments
-            to attach each rule to. Anchoring a habit to something you already do every day
-            is the most reliable way to make it stick. You pick; it only offers.
+            תגיד בערך מתי אתה קם, עובד וישן, ואפשר יהיה להציע לך רגעים לחבר אליהם כל
+            כלל. עיגון הרגל למשהו שאתה כבר עושה כל יום הוא הדרך הכי אמינה לגרום לו
+            להיתפס. אתה בוחר, כאן רק מציעים.
           </p>
           <Button variant="secondary" className="mt-3" onClick={() => setEditing(true)}>
-            Answer four questions
+            ארבע שאלות קצרות
           </Button>
         </div>
       )}
@@ -82,8 +82,8 @@ export function Routine({ challengeId }: { challengeId: string }) {
       {routine && !editing && (
         <div className="grid gap-5">
           <p className="text-[12px] text-ink-muted">
-            Say how each rule sits in your day. Suggestions only appear where they make
-            sense: something spread across the whole day has no single moment to attach to.
+            תגדיר איך כל כלל יושב לך ביום. הצעות מופיעות רק איפה שיש בהן היגיון: למשהו
+            שפרוס על כל היום אין רגע אחד להתחבר אליו.
           </p>
 
           {rows.map((row) => (
@@ -91,7 +91,7 @@ export function Routine({ challengeId }: { challengeId: string }) {
           ))}
 
           {rows.length === 0 && (
-            <p className="text-[13px] text-ink-muted">Add some rules first.</p>
+            <p className="text-[13px] text-ink-muted">קודם צריך להוסיף כללים.</p>
           )}
         </div>
       )}
@@ -141,16 +141,16 @@ function RoutineForm({
       }}
     >
       <div className="grid grid-cols-2 gap-3">
-        <Field label="I wake up at">
+        <Field label="אני קם ב">
           <Input type="time" value={wakeTime} onChange={(e) => setWakeTime(e.target.value)} />
         </Field>
-        <Field label="I go to sleep at">
+        <Field label="אני הולך לישון ב">
           <Input type="time" value={sleepTime} onChange={(e) => setSleepTime(e.target.value)} />
         </Field>
-        <Field label="Work starts">
+        <Field label="העבודה מתחילה">
           <Input type="time" value={workStart} onChange={(e) => setWorkStart(e.target.value)} />
         </Field>
-        <Field label="Work ends">
+        <Field label="העבודה נגמרת">
           <Input type="time" value={workEnd} onChange={(e) => setWorkEnd(e.target.value)} />
         </Field>
       </div>
@@ -162,11 +162,11 @@ function RoutineForm({
           onChange={(e) => setHasKids(e.target.checked)}
           className="h-4 w-4 accent-[var(--color-orange)]"
         />
-        I have kids at home
+        יש לי ילדים בבית
       </label>
 
       <p className="text-[12px] text-ink-muted">
-        Leave anything blank you would rather not say. Blanks just mean fewer suggestions.
+        אפשר להשאיר ריק כל מה שלא בא לך למלא. ריק פשוט אומר פחות הצעות.
       </p>
 
       {save.isError && (
@@ -177,10 +177,10 @@ function RoutineForm({
 
       <div className="flex gap-2">
         <Button type="submit" variant="secondary" loading={save.isPending}>
-          {save.isPending ? 'Saving…' : 'Save'}
+          {save.isPending ? 'שומר…' : 'שמירה'}
         </Button>
         <Button type="button" variant="ghost" onClick={onCancel}>
-          Cancel
+          ביטול
         </Button>
       </div>
     </form>

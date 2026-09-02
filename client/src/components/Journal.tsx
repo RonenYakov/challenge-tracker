@@ -54,8 +54,8 @@ export function Journal({ date, initialNote }: { date: string; initialNote: stri
       <div className="mb-2 flex items-baseline justify-between">
         <p className="eyebrow">Today&rsquo;s note</p>
         <span className="font-mono text-[11px] text-ink-muted">
-          {state === 'saving' && 'Saving…'}
-          {state === 'saved' && 'Saved'}
+          {state === 'saving' && 'שומר…'}
+          {state === 'saved' && 'נשמר'}
           {state === 'error' && (
             <button
               type="button"
@@ -66,7 +66,7 @@ export function Journal({ date, initialNote }: { date: string; initialNote: stri
               className="underline"
               style={{ color: 'var(--color-clay)' }}
             >
-              Not saved. Retry
+              לא נשמר. נסה שוב
             </button>
           )}
         </span>
@@ -88,7 +88,7 @@ export function Journal({ date, initialNote }: { date: string; initialNote: stri
         }}
         rows={3}
         maxLength={5000}
-        placeholder="How did today actually go? Optional, and nobody sees it but you."
+        placeholder="איך היה היום באמת? לא חובה, ואף אחד חוץ ממך לא רואה את זה."
         className="w-full resize-y rounded-lg border border-mist bg-cream px-3 py-2 text-[15px] leading-relaxed text-ink transition-colors duration-150 placeholder:text-ink-muted/70 focus:border-orange focus:outline-none"
       />
     </Card>

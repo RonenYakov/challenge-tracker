@@ -23,12 +23,12 @@ export function Stats() {
 
   if (today.isPending) return <Skeleton className="h-64 w-full rounded-2xl" />
   if (!challenge) {
-    return <EmptyState title="Nothing to show yet" body="Start a challenge and the numbers will fill in." />
+    return <EmptyState title="אין עדיין מה להראות" body="תתחיל אתגר והמספרים יתמלאו מעצמם." />
   }
 
   const allDays = days.data?.days ?? []
   const currentAttempt = allDays.filter((d) => d.attemptNo === challenge.attemptNo)
-  const streak = computeStreak(currentAttempt)
+  const streak = computeStreak(currentAttempt, challenge.restWeekdays)
   const perfectDays = currentAttempt.filter((d) => d.status === 'complete').length
   const currentDay = stats.data?.currentDayNumber ?? 0
 
@@ -82,7 +82,7 @@ export function Stats() {
                 }}
               >
                 {reached ? '★ ' : ''}
-                Day {day}
+                יום {day}
               </span>
             )
           })}
@@ -92,7 +92,7 @@ export function Stats() {
       <Card>
         <p className="eyebrow mb-1">Which rule is breaking you</p>
         <p className="mb-4 text-[13px] text-ink-muted">
-          Completion rate per rule across finished days of this attempt.
+          אחוז ההשלמה של כל כלל על פני הימים שנסגרו בניסיון הזה.
         </p>
 
         {stats.isPending ? (
@@ -104,7 +104,7 @@ export function Stats() {
               .map((task) => (
                 <li key={task.taskId}>
                   <div className="mb-1 flex items-baseline justify-between gap-3">
-                    <p className="truncate text-[14px]" style={{ unicodeBidi: 'plaintext', textAlign: 'left' }}>
+                    <p className="truncate text-[14px]" style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}>
                       {task.label}
                     </p>
                     <p className="tnum shrink-0 font-mono text-[12px] text-ink-muted">
@@ -133,7 +133,7 @@ export function Stats() {
 
         {stats.data?.taskRates.every((t) => t.closedDays === 0) && (
           <p className="mt-3 text-[13px] text-ink-muted">
-            Nothing to compare yet. Come back after your first full day closes.
+            אין עדיין מה להשוות. תחזור אחרי שהיום המלא הראשון שלך ייסגר.
           </p>
         )}
       </Card>

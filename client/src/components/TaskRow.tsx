@@ -54,7 +54,7 @@ export function TaskRow({
 
   return (
     <li
-      className="group flex items-center gap-3 rounded-xl border border-mist/60 bg-paper px-3 py-2.5 shadow-sm transition-colors duration-150"
+      className="group flex items-center gap-3 rounded-xl border border-mist/60 bg-paper px-3 py-2 shadow-sm transition-colors duration-150 sm:py-2.5"
       style={{ borderColor: done ? 'var(--color-gold-dim)' : undefined }}
     >
       <Checkbox
@@ -66,17 +66,16 @@ export function TaskRow({
 
       <div className="min-w-0 flex-1">
         {/*
-          `plaintext` orders each label by its own script, so Hebrew reads right-to-left,
-          while the block stays left-aligned. Full `dir="auto"` would also right-align it,
-          pushing the text away from its checkbox and making a mixed list hard to scan.
+          `plaintext` orders each label by its own script, so an English rule reads
+          left-to-right inside a right-to-left list. Alignment stays on `start`, which is
+          the same edge as the checkbox, so a mixed list still scans down one column.
+          Full `dir="auto"` would flip alignment per row and break that column.
         */}
         <p
           className="truncate text-[15px] transition-colors duration-200"
           style={{
             unicodeBidi: 'plaintext',
-            // `start` would resolve to the right for a Hebrew label; pin it left so every
-            // row lines up under the same checkbox column.
-            textAlign: 'left',
+            textAlign: 'start',
             color: done ? 'var(--color-ink-muted)' : 'var(--color-ink)',
             textDecorationLine: done ? 'line-through' : 'none',
             textDecorationColor: 'var(--color-gold)',
@@ -93,7 +92,7 @@ export function TaskRow({
         {task.cue && !done && (
           <p
             className="mt-0.5 truncate text-[11px] text-ink-muted"
-            style={{ unicodeBidi: 'plaintext', textAlign: 'left' }}
+            style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}
           >
             {task.cue}
           </p>
@@ -120,11 +119,11 @@ export function TaskRow({
             backgroundColor: isRunning ? 'hsl(8 52% 52% / 0.06)' : 'transparent',
           }}
         >
-          {isRunning ? 'Stop' : 'Start'}
+          {isRunning ? 'עצור' : 'התחל'}
         </button>
       )}
 
-      <kbd className="tnum hidden w-4 shrink-0 text-right font-mono text-[10px] text-ink-muted opacity-0 transition-opacity duration-150 group-hover:opacity-100 sm:block">
+      <kbd className="tnum hidden w-4 shrink-0 text-end font-mono text-[10px] text-ink-muted opacity-0 transition-opacity duration-150 group-hover:opacity-100 sm:block">
         {index < 9 ? index + 1 : ''}
       </kbd>
     </li>
@@ -186,10 +185,10 @@ function Stepper({
 }) {
   return (
     <div className="flex items-center gap-2 sm:gap-1">
-      <StepButton disabled={disabled} onClick={() => onStep(-step)} label="Decrease">
+      <StepButton disabled={disabled} onClick={() => onStep(-step)} label="הפחתה">
         &minus;
       </StepButton>
-      <StepButton disabled={disabled} onClick={() => onStep(step)} label="Increase">
+      <StepButton disabled={disabled} onClick={() => onStep(step)} label="הוספה">
         +
       </StepButton>
     </div>

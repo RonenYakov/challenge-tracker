@@ -72,7 +72,7 @@ export async function taskRoutes(app: FastifyInstance) {
     const { task, challenge } = await loadOwnedTask(request.user.id, id)
 
     if (body.scheduleMode === 'fixed' && !(body.scheduledTime ?? task.scheduledTime)) {
-      throw badRequest('A rule at a set time needs a time.')
+      throw badRequest('כלל בשעה קבועה חייב שעה.')
     }
 
     const kind = body.kind ?? task.kind

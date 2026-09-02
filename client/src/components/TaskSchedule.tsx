@@ -18,9 +18,9 @@ type Mode = Task['scheduleMode']
  * person knows and the software is guessing.
  */
 const OPTIONS: { mode: Exclude<Mode, 'unset'>; label: string; hint: string }[] = [
-  { mode: 'fixed', label: 'At a set time', hint: 'LeetCode at 10:00' },
-  { mode: 'anchored', label: 'After something else', hint: 'once the kids are in bed' },
-  { mode: 'anytime', label: 'Across the day', hint: 'water, steps, protein' },
+  { mode: 'fixed', label: 'בשעה קבועה', hint: 'לירטקוד ב-10:00' },
+  { mode: 'anchored', label: 'אחרי משהו אחר', hint: 'אחרי שהילדים במיטה' },
+  { mode: 'anytime', label: 'לאורך היום', hint: 'מים, צעדים, חלבון' },
 ]
 
 export function TaskSchedule({ row, onChanged }: { row: TaskAnchors; onChanged: () => void }) {
@@ -43,7 +43,7 @@ export function TaskSchedule({ row, onChanged }: { row: TaskAnchors; onChanged: 
     <div>
       <p
         className="truncate text-[14px]"
-        style={{ unicodeBidi: 'plaintext', textAlign: 'left' }}
+        style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}
       >
         {row.label}
       </p>
@@ -87,20 +87,20 @@ export function TaskSchedule({ row, onChanged }: { row: TaskAnchors; onChanged: 
             }}
             className="max-w-[9rem]"
           />
-          <span className="text-[12px] text-ink-muted">every day, and in your calendar</span>
+          <span className="text-[12px] text-ink-muted">כל יום, וגם ביומן שלך</span>
         </div>
       )}
 
       {mode === 'anytime' && (
         <p className="mt-1.5 text-[12px] text-ink-muted">
-          No single moment, so nothing to anchor. Just get it done before the day closes.
+          אין רגע אחד מסוים, אז אין למה לעגן. פשוט תסיים את זה לפני שהיום נסגר.
         </p>
       )}
 
       {mode === 'anchored' &&
         (row.currentCue ? (
           <p className="mt-1.5 text-[12px]" style={{ color: 'var(--color-sage)' }}>
-            After: {row.currentCue}
+            אחרי: {row.currentCue}
           </p>
         ) : row.anchors.length > 0 ? (
           <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -118,8 +118,7 @@ export function TaskSchedule({ row, onChanged }: { row: TaskAnchors; onChanged: 
           </div>
         ) : (
           <p className="mt-1.5 text-[12px] text-ink-muted">
-            Fill in more of your day above and suggestions appear here, or write a cue on
-            the rule itself.
+            תמלא עוד מהיום שלך למעלה והצעות יופיעו כאן, או שתכתוב רמז על הכלל עצמו.
           </p>
         ))}
     </div>

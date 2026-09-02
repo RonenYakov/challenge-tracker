@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
-import { addDays, buildIcs } from '@ct/shared'
+import { buildIcs, challengeEndDate } from '@ct/shared'
 import { sql, toChallenge, toScheduledEvent, toTask } from '../db.js'
 import { notFound } from '../errors.js'
 
@@ -62,7 +62,9 @@ export async function calendarRoutes(app: FastifyInstance) {
       events: [...eventRows.map(toScheduledEvent), ...pinned],
       timezone: challenge?.timezone ?? 'UTC',
       from: challenge?.startDate ?? '2026-01-01',
-      until: challenge ? addDays(challenge.startDate, challenge.lengthDays - 1) : '2026-01-01',
+      // Not start + length: with rest days the run reaches further down the calendar,
+      // and a feed that stopped short would quietly go blank before the challenge ended.
+      until: challenge ? challengeEndDate(challenge) : '2026-01-01',
       calendarName: challenge?.name ?? 'Challenge',
     })
 

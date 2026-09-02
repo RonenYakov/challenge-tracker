@@ -3,7 +3,7 @@ import { BrowserRouter, Link, NavLink, Navigate, Route, Routes } from 'react-rou
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
 import type { Session } from '@supabase/supabase-js'
 import { api, supabase } from './lib/api'
-import { SignIn } from './screens/SignIn'
+import { SignIn, UpdatePassword, usePasswordRecovery } from './screens/SignIn'
 import { Today } from './screens/Today'
 import { Challenges } from './screens/Challenges'
 import { ChallengeEditor } from './screens/ChallengeEditor'
@@ -22,6 +22,7 @@ const queryClient = new QueryClient({
 
 export function App() {
   const session = useSession()
+  const [recovering, finishRecovery] = usePasswordRecovery()
 
   if (session === undefined) {
     return (
@@ -32,6 +33,10 @@ export function App() {
   }
 
   if (session === null) return <SignIn />
+
+  // Arriving from a reset link signs the user in, so this has to be checked after the
+  // session exists. It takes over the whole screen until a new password is set.
+  if (recovering) return <UpdatePassword onDone={finishRecovery} />
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -61,14 +66,14 @@ function ChallengeMenu() {
   return (
     <Link
       to="/challenges"
-      className="press ml-auto flex min-h-11 items-center gap-1.5 rounded-lg px-2.5 text-[13px] text-ink-muted hover:bg-cream-dark hover:text-ink sm:min-h-0 sm:py-1.5"
-      title="Switch or manage challenges"
+      className="press ms-auto flex min-h-11 items-center gap-1.5 rounded-lg px-2.5 text-[13px] text-ink-muted hover:bg-cream-dark hover:text-ink sm:min-h-0 sm:py-1.5"
+      title="החלפה וניהול אתגרים"
     >
       <span
         className="max-w-[9rem] truncate sm:max-w-[16rem]"
         style={{ unicodeBidi: 'plaintext' }}
       >
-        {challenge ? challenge.name : 'No challenge'}
+        {challenge ? challenge.name : 'אין אתגר פעיל'}
       </span>
       <svg viewBox="0 0 20 20" className="h-3.5 w-3.5 shrink-0" aria-hidden="true">
         <path
@@ -137,7 +142,7 @@ function Shell({ children }: { children: React.ReactNode }) {
             onClick={() => void supabase.auth.signOut()}
             className="press flex min-h-11 items-center rounded-lg px-3 text-[14px] text-ink-muted hover:text-ink sm:min-h-0 sm:py-1.5 sm:text-[13px]"
           >
-            Sign out
+            התנתקות
           </button>
         </div>
       </header>

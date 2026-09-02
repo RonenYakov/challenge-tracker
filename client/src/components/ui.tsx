@@ -43,7 +43,7 @@ export function Card({
 }) {
   return (
     <section
-      className={`rounded-2xl border border-mist/70 bg-paper p-5 shadow-sm ${className}`}
+      className={`rounded-2xl border border-mist/70 bg-paper p-4 shadow-sm sm:p-5 ${className}`}
     >
       {children}
     </section>
@@ -95,8 +95,16 @@ export function Stat({
     <div>
       <p className="eyebrow">{label}</p>
       <p className="tnum mt-1 font-mono text-2xl leading-none" style={{ color }}>
-        {value}
-        {suffix && <span className="ml-1 text-sm text-ink-muted">{suffix}</span>}
+        {/*
+          The value and its "/ total" are two number runs with only neutrals between
+          them, which right-to-left lays out as "3 / 2" for two of three. Reading it
+          that way needs the reader to scan the digits right-to-left, which nobody
+          does. Isolating the pair keeps it as written.
+        */}
+        <span dir="ltr" className="inline-block">
+          {value}
+          {suffix && <span className="ms-1 text-sm text-ink-muted">{suffix}</span>}
+        </span>
       </p>
     </div>
   )
@@ -143,7 +151,7 @@ export function ErrorCard({
       <p className="mt-2 text-[15px] text-ink">{message}</p>
       {onRetry && (
         <Button variant="secondary" className="mt-4" onClick={onRetry}>
-          Try again
+          נסה שוב
         </Button>
       )}
     </section>

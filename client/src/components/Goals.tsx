@@ -44,7 +44,7 @@ export function Goals({ challengeId }: { challengeId: string }) {
             onClick={() => setAdding(true)}
             className="touch text-[12px] text-ink-muted underline hover:text-ink"
           >
-            Add
+            הוספה
           </button>
         )}
       </div>
@@ -60,11 +60,11 @@ export function Goals({ challengeId }: { challengeId: string }) {
           {goals.length === 0 && !adding && (
             <div>
               <p className="text-[13px] text-ink-muted">
-                Nothing set for the end of this challenge yet. Lose 3kg, read 12 books,
-                or finish the thing you keep putting off.
+                עוד לא הוגדר שום דבר לסוף האתגר. לרדת 3 קילו, לקרוא 12 ספרים, או
+                לסיים את הדבר שאתה כל הזמן דוחה.
               </p>
               <Button variant="secondary" className="mt-3" onClick={() => setAdding(true)}>
-                Set a goal
+                הגדרת יעד
               </Button>
             </div>
           )}
@@ -99,17 +99,17 @@ function GoalRow({ item, onChanged }: { item: GoalWithProgress; onChanged: () =>
       <div className="mt-1.5 flex items-center gap-3">
         {goal.kind === 'milestone' && !done && (
           <span className="tnum font-mono text-[11px] text-ink-muted">
-            {daysRemaining} days left
+            נותרו {daysRemaining} ימים
           </span>
         )}
         <button
           type="button"
           onClick={() => {
-            if (confirm(`Remove the goal "${goal.label}"? Anything logged is kept.`)) remove.mutate()
+            if (confirm(`למחוק את היעד "${goal.label}"? מה שתועד יישמר.`)) remove.mutate()
           }}
           className="touch text-[11px] text-ink-muted underline hover:text-ink"
         >
-          Remove
+          מחיקה
         </button>
       </div>
     </div>
@@ -161,7 +161,7 @@ function MilestoneRow({ item, onChanged }: { item: GoalWithProgress; onChanged: 
         className="min-w-0 flex-1 truncate text-[15px]"
         style={{
           unicodeBidi: 'plaintext',
-          textAlign: 'left',
+          textAlign: 'start',
           color: done ? 'var(--color-ink-muted)' : 'var(--color-ink)',
           textDecorationLine: done ? 'line-through' : 'none',
           textDecorationColor: 'var(--color-gold)',
@@ -199,7 +199,7 @@ function NumberRow({ item, onChanged }: { item: GoalWithProgress; onChanged: () 
   return (
     <div>
       <div className="flex items-baseline justify-between gap-3">
-        <p className="truncate text-[15px]" style={{ unicodeBidi: 'plaintext', textAlign: 'left' }}>
+        <p className="truncate text-[15px]" style={{ unicodeBidi: 'plaintext', textAlign: 'start' }}>
           {goal.label}
         </p>
         <p className="tnum shrink-0 font-mono text-[12px]" style={{ color: tone }}>
@@ -222,17 +222,17 @@ function NumberRow({ item, onChanged }: { item: GoalWithProgress; onChanged: () 
           <span
             className="absolute top-0 h-full w-px bg-ink-muted/50"
             style={{
-              left: `${Math.min(100, Math.max(0, ((progress.expected - start) / (target - start)) * 100))}%`,
+              insetInlineStart: `${Math.min(100, Math.max(0, ((progress.expected - start) / (target - start)) * 100))}%`,
             }}
-            title="Where you would be on a straight line to the target"
+            title="איפה היית אמור להיות בקו ישר אל היעד"
           />
         )}
       </div>
 
       <p className="tnum mt-1 font-mono text-[11px] text-ink-muted">
         {done
-          ? `Target reached · ${formatNumber(target)}${unit}`
-          : `${formatNumber(progress.remaining ?? 0)}${unit} to go · ${progress.onPace ? 'on pace' : 'behind pace'} · ${daysRemaining} days left`}
+          ? `היעד הושג · ${formatNumber(target)}${unit}`
+          : `נותרו ${formatNumber(progress.remaining ?? 0)}${unit} · ${progress.onPace ? 'בקצב' : 'מאחור בקצב'} · עוד ${daysRemaining} ימים`}
       </p>
 
       <div className="mt-2 flex items-center gap-2">
@@ -242,7 +242,7 @@ function NumberRow({ item, onChanged }: { item: GoalWithProgress; onChanged: () 
           inputMode="decimal"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder={`Log today${goal.unit ? ` (${goal.unit})` : ''}`}
+          placeholder={`תיעוד להיום${goal.unit ? ` (${goal.unit})` : ''}`}
           className="flex-1"
           onKeyDown={(e) => {
             if (e.key === 'Enter' && value !== '') log.mutate(Number(value))
@@ -253,7 +253,7 @@ function NumberRow({ item, onChanged }: { item: GoalWithProgress; onChanged: () 
           disabled={value === '' || log.isPending}
           onClick={() => log.mutate(Number(value))}
         >
-          Log
+          תיעוד
         </Button>
       </div>
 
@@ -304,8 +304,8 @@ function NewGoalForm({
       <div className="mb-3 flex flex-wrap gap-1.5">
         {(
           [
-            ['number', 'A number to move'],
-            ['milestone', 'Something to finish'],
+            ['number', 'מספר שצריך להזיז'],
+            ['milestone', 'משהו שצריך לסיים'],
           ] as const
         ).map(([option, text]) => (
           <button
@@ -324,19 +324,19 @@ function NewGoalForm({
         ))}
       </div>
 
-      <Field label="Goal">
+      <Field label="יעד">
         <Input
           dir="auto"
           required
           value={label}
           onChange={(e) => setLabel(e.target.value)}
-          placeholder={kind === 'number' ? 'Lose 3kg' : 'Ship the project to production'}
+          placeholder={kind === 'number' ? 'לרדת 3 קילו' : 'להעלות את הפרויקט לאוויר'}
         />
       </Field>
 
       {kind === 'number' && (
         <div className="mt-3 grid grid-cols-3 gap-2">
-          <Field label="Now">
+          <Field label="עכשיו">
             <Input
               type="number"
               step="any"
@@ -347,7 +347,7 @@ function NewGoalForm({
               placeholder="80"
             />
           </Field>
-          <Field label="Target">
+          <Field label="יעד">
             <Input
               type="number"
               step="any"
@@ -358,15 +358,15 @@ function NewGoalForm({
               placeholder="77"
             />
           </Field>
-          <Field label="Unit">
-            <Input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="kg" />
+          <Field label="יחידה">
+            <Input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="ק״ג" />
           </Field>
         </div>
       )}
 
       {kind === 'milestone' && (
         <p className="mt-2 text-[12px] text-ink-muted">
-          No numbers to track. Tick it off when it is done, any time before the challenge ends.
+          אין מספרים לעקוב אחריהם. פשוט תסמן כשזה נגמר, מתי שתרצה לפני סוף האתגר.
         </p>
       )}
 
@@ -378,10 +378,10 @@ function NewGoalForm({
 
       <div className="mt-3 flex gap-2">
         <Button type="submit" variant="secondary" loading={pending}>
-          {pending ? 'Saving…' : 'Add goal'}
+          {pending ? 'שומר…' : 'הוספת יעד'}
         </Button>
         <Button type="button" variant="ghost" onClick={onCancel}>
-          Cancel
+          ביטול
         </Button>
       </div>
     </form>

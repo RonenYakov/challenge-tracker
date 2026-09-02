@@ -22,7 +22,7 @@
   --color-clay: hsl(8 52% 52%);
 
   --font-sans: 'DM Sans', 'Assistant', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --font-mono: 'IBM Plex Mono', 'Assistant', ui-monospace, monospace;
 
   /* Colored shadows, never pure black. */
   --shadow-sm: 0 1px 2px hsl(30 40% 12% / 0.06);
@@ -38,6 +38,16 @@
   html {
     -webkit-text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    /*
+      A right-to-left document puts its vertical scrollbar on the left, and the
+      sub-pixel rounding that follows is enough to hand the page a stray pixel of
+      horizontal scroll. `clip` rather than `hidden` on purpose: `hidden` would turn
+      the root into a scroll container and quietly kill the sticky header.
+    */
+    overflow-x: clip;
   }
 
   body {
